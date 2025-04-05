@@ -1,25 +1,28 @@
 import { Response,Request, Router } from "express";
 import {z} from "zod";
 import { authMiddleware } from "../middleware/authMiddleware";
+import {CreateUserSchema} from "@repo/common/types";
 const userRouter: Router = Router();
 
 userRouter.get("/signup",(req:Request,res:Response)=>{
 
-    const requireBody = z.object({
-        username: z.string().min(3,{message:"Username must be greater than 3 characters"}).max(20,{message:"Username must be less than 20 characters"}),
-        password: z.string().min(6,{message:"Password must be greater than 3 characters"}).max(20,{message:"Password cannot be greater than 20 characters"}),
-        firstName: z.string().min(3).max(14),
-        lastName: z.string().min(3).max(40)
-    })
+    // const requireBody = z.object({
+    //     username: z.string().min(3,{message:"Username must be greater than 3 characters"}).max(20,{message:"Username must be less than 20 characters"}),
+    //     password: z.string().min(6,{message:"Password must be greater than 3 characters"}).max(20,{message:"Password cannot be greater than 20 characters"}),
+    //     firstName: z.string().min(3).max(14),
+    //     lastName: z.string().min(3).max(40)
+    // })
     
-    const parsedDataWithSuccess = requireBody.safeParse(req.body);
+    // const parsedDataWithSuccess = requireBody.safeParse(req.body);
+    const parsedDataWithSuccess = CreateUserSchema.safeParse(req.body);
     if(!parsedDataWithSuccess.success){
         res.status(400).json({
-            message: parsedDataWithSuccess.error
+            message: parsedDataWithSuccess.error,
+            mess:"Incorrect inputs"
         })
         return;
     }
-    const {username, password, firstName, lastName} = parsedDataWithSuccess.data;
+    const {username, password, name} = parsedDataWithSuccess.data;
 
     try{
 
@@ -28,7 +31,7 @@ userRouter.get("/signup",(req:Request,res:Response)=>{
         })
         
     } catch(error){
-         res.status(411).json({
+         res.status(409).json({
             message:`Email already taken / Incorrect inputs ${error}`
         })
         return;

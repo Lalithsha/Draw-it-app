@@ -23,9 +23,6 @@ importers:
 
   apps/http-backend:
     dependencies:
-      '@repo/backend-common':
-        specifier: workspace:*
-        version: link:../../packages/backend-common
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
@@ -54,6 +51,12 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
     devDependencies:
+      '@repo/backend-common':
+        specifier: workspace:*
+        version: link:../../packages/backend-common
+      '@repo/common':
+        specifier: workspace:*
+        version: link:../../packages/common
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -128,6 +131,16 @@ importers:
       '@types/node':
         specifier: ^22.13.10
         version: 22.13.10
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/common:
+    dependencies:
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*

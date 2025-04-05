@@ -1,0 +1,29 @@
+{
+  "name": "@repo/common",
+  "version": "1.0.0",
+  "main": "./src/types.ts",
+  "types": "./src/types.ts",
+  "exports": {
+    ".": {
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    }
+  },
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}
