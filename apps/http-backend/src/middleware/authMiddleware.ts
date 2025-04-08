@@ -1,6 +1,5 @@
 import  { Response,Request, NextFunction } from "express";
-import { JwtPayload, sign, verify } from "jsonwebtoken";
-
+import jwt from "jsonwebtoken";
 
 declare global {
     namespace Express{
@@ -12,20 +11,25 @@ declare global {
 
 export function authMiddleware(req:Request, res:Response, next:NextFunction){
 
-
-    const token = req.headers["Authorization"] ?? ""; 
+    const token = req.headers["authorization"] ?? "" ; 
     // var token = authHeader && authHeader.split(' ')[1]
+
     console.log("JWT secrect ", process.env.JWT_SECRET);
+    console.log(token);
+
     // @ts-ignore
-    const decoded = verify(token,process.env.JWT_SECRET) 
+    const decoded = jwt.verify(token,process.env.JWT_SECRET) 
+    console.log(decoded);
     if(!decoded){
-        res.json({
+        res.status(403).json({
             message:"Unauthorized"
         })
         return;
     } else {
         // @ts-ignore
-        req.userId = decoded.userId;
+        console.log("From auth middleware  ",  decoded.id);
+        // @ts-ignore
+        req.userId = decoded;
         next();
     }
     
