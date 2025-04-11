@@ -137,6 +137,28 @@ userRouter.post("/room", authMiddleware, async (req:Request,res:Response)=>{
     }
 })
 
-// module.exports = {userRouter}
+userRouter.get("/chats/:roomId", async (req,res)=>{
+    const roomId  = Number(req.body.roomId);
+    try{
+        const messages = await prismaClient.chat.findMany({
+            where:{
+                roomId
+            },
+            orderBy:{
+                id:"desc"
+            },
+            take:50
+        })
+        
+        res.json({
+            messages
+        })
+    } catch(err){
+        res.status(400).json({
+            message:"Failed to get chats"
+        })
+    }
+})
+
 export {userRouter}
 
