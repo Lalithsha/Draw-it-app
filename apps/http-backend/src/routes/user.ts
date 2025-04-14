@@ -138,7 +138,7 @@ userRouter.post("/room", authMiddleware, async (req:Request,res:Response)=>{
 })
 
 userRouter.get("/chats/:roomId", async (req,res)=>{
-    const roomId  = Number(req.body.roomId);
+    const roomId  = Number(req.params.roomId);
     try{
         const messages = await prismaClient.chat.findMany({
             where:{
@@ -159,6 +159,30 @@ userRouter.get("/chats/:roomId", async (req,res)=>{
         })
     }
 })
+
+
+userRouter.get("/room/:slug", async(req,res)=>{
+
+    const slug = req.params.slug;
+    try{
+        const room  =  await prismaClient.room.findFirst({ 
+            where:{
+                slug
+            }
+        })
+        console.log("Room is: ", room)
+        res.json({
+            message:"Successfully found room",
+            room
+        })
+    } catch(err){
+        res.status(404).json({
+            message:"Room not found"
+        })
+    }  
+    
+})
+
 
 export {userRouter}
 
