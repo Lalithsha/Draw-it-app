@@ -58,7 +58,7 @@ export function ChatRoomClient({
         }}
       />
 
-      <button onClick={() => sendMessage}>Send message</button>
+      <button onClick={sendMessage}>Send message</button>
     </div>
   );
 }
