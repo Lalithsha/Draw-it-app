@@ -1,17 +1,30 @@
 "use client";
+import Input from "@repo/ui/components/Input2";
 
 export function AuthPage({ isSignIn }: { isSignIn: boolean }) {
   return (
     <div className="w-screen h-screen flex flex-col justify-center items-center ">
       <div className="m-2 p-2 bg-white rounded-md shadow-md text-gray-800 w-96 ">
         <div className="w-full p-2 border border-gray-300 rounded-md my-2">
-          <input type="email" placeholder="Email" className="w-full px-2" />
+          {/* <input type="email" placeholder="Email" className="w-full px-2" /> */}
+          <Input
+            type="email"
+            placeholder="Email"
+            className="w-full px-2"
+            name="email"
+          />
         </div>
         <div className="w-full p-2 border border-gray-300 rounded-md my-2">
-          <input
+          {/* <input
             type="password"
             placeholder="Password"
             className="w-full items-center px-2"
+          /> */}
+          <Input
+            type="password"
+            placeholder="Password"
+            className="w-full items-center px-2"
+            name="password"
           />
         </div>
         <div className="pt-2">
