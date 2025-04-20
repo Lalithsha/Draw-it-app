@@ -1,3 +1,6 @@
+import axios from "axios";
+import { HTTP_BACKEND } from "../config";
+
 type Shape = {
     type:"rect";
     x:number;
@@ -12,18 +15,32 @@ type Shape = {
 }
 
 
-export default function initDraw(canvas: HTMLCanvasElement){
+export default async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket){
   
     const ctx = canvas.getContext("2d");
 
-    let existingShape: Shape[] =[];
+    // State variable
+    let existingShape: Shape[] = await getExistingShapes(roomId);
     
     if (!ctx) {
         return;
     }
 
-    ctx.fillStyle = "rgba(0, 0, 0)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    socket.onmessage = (event) =>{
+        const message = JSON.parse(event.data);
+
+        if(message.type==='chat'){
+            const parsedData = JSON.parse(message.message)
+            existingShape.push(parsedData.shape)
+            clearCanvas(existingShape, canvas);
+        }
+        
+    }
+    
+    /* ctx.fillStyle = "rgba(0, 0, 0)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height); */
+
+    clearCanvas(existingShape, canvas);
 
     let clicked = false;
     let startX = 0;
@@ -41,13 +58,20 @@ export default function initDraw(canvas: HTMLCanvasElement){
         console.log("Mouse up", e.clientY);
         const width = e.clientX-startX;
         const height = e.clientY-startY;
-        existingShape.push({
+        const shape:Shape = {
             type:"rect",
             x:startX,
             y:startY,
             width,
             height
-        })
+        }
+        existingShape.push(shape)
+        socket.send(JSON.stringify({
+                type:"chat",
+                message:JSON.stringify({shape}),
+                roomId
+            }   
+        ))
 
         
     });
@@ -81,3 +105,19 @@ function clearCanvas(existingShape:Shape[], canvas: HTMLCanvasElement){
     })
     
 }
+
+
+async function getExistingShapes(roomId:string){
+
+    const response =  await axios.get(`${HTTP_BACKEND}/chats/${roomId}`);
+    const messages = response.data.messages;
+    console.log("result for message from excelidraw fronted is: ", messages);
+
+    const shapes = messages.map((x:{message:string})=>{
+        const messageData = JSON.parse(x.message) // converting string to object {type: , message:}
+        return messageData.shape;
+    })
+    
+    return shapes;
+}
+
