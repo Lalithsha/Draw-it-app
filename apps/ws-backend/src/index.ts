@@ -120,10 +120,9 @@ wss.on('connection', function connection(ws, request) {
     
     if(parsedData.type==="chat"){
       const {roomId, message} = parsedData;
-
       await prismaClient.chat.create({
         data:{
-          roomId,
+          roomId: Number(roomId),
           message,
           userId
         }
