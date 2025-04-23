@@ -85,14 +85,29 @@ userRouter.post("/signin", async (req,res)=>{
             return;
         }
 
-        console.log("From sign in: ",  process.env.JWT_SECRET)
-        // @ts-ignore
-        const token =  jwt.sign(user.id, process.env.JWT_SECRET);
+        // Old approach to sign-in
+        // console.log("From sign in: ",  process.env.JWT_SECRET)
+        // // @ts-ignore
+        // const token =  jwt.sign(user.id, process.env.JWT_SECRET);
 
-        res.json({
-            message:"sign in successfully",
-            token
+        // res.json({
+        //     message:"sign in successfully",
+        //     token
+        // })
+
+        // @ts-ignore    
+        const token =  jwt.sign(user.id, process.env.JWT_SECRET);
+        res.cookie("access_token", token, {
+            httpOnly:true,
+            // secure:true,
+            // sameSite:"strict",
+            maxAge: 36000000,
+            secure: process.env.NODE_ENV === 'production'
+        }).json({
+            message:"sign-in successfully",
+            token,
         })
+        return;
         
     } catch(error){
         res.status(403).json({
