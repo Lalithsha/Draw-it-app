@@ -1,6 +1,5 @@
-"use client";
 import Input from "@repo/ui/components/Input2";
-import { useState } from "react";
+import { TurbopackRuleConfigItemOptions } from "next/dist/server/config-shared";
 import Link from "next/link";
 
 interface BaseAuthProps {
@@ -12,13 +11,13 @@ interface BaseAuthProps {
 }
 
 interface SignInProps extends BaseAuthProps {
-  isSignIn: false;
+  isSignIn: true;
   name: string;
   setName: (name: string) => void;
 }
 
 interface SignUpProps extends BaseAuthProps {
-  isSignIn: true;
+  isSignIn: false;
   name: string;
   setName: (name: string) => void;
 }
@@ -37,12 +36,6 @@ export function AuthPage(props: AuthProps) {
     onSubmit,
   } = props;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission logic here
-    console.log({ name, email, password });
-  };
-
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg">
@@ -54,7 +47,7 @@ export function AuthPage(props: AuthProps) {
             ? "Sign in to continue drawing."
             : "Sign up to start your creative journey."}
         </p>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           {!isSignIn && (
             <div>
               <label
