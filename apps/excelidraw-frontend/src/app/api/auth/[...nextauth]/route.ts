@@ -20,55 +20,17 @@ const handler = NextAuth({
             if (!username || !password) {
               return null;
             }
-            
-            /* 
-            params: {
-                username,
-                password
-              }
-                 */
-            
-            // db request to check if the username and password are correct
-            /* const response = await axios.post(`http://localhost:3001/api/v1/user/signin`, {
-              params: {
-                username,
-                password
-              }
-            }).catch((error) => {
-              console.log("Error in axios request ", error);
-              return null;
-            });
-            console.log("The response from axios is : ", response); */
-
-
-            // const response = await axios.post(
-            //   `http://localhost:3001/api/v1/user/signin`,
-            //   { username, password },
-            //   { headers: { "Content-Type": "application/json" } }
-            // ).catch((error) => {
-            //   console.log("Error in axios request ", error);
-            //   return null;
-            // });
-            // console.log("The response from axios is : ", response);
-            
-
-            // if (response && response.data) {
-            //   return response.data;
-            // }
-            // return null;
-
 
             try {
               const response = await axios.post(
                 `http://localhost:3001/api/v1/user/signin`,
-                { username, password },
-                { headers: { "Content-Type": "application/json" } }
+                { username, password }
               );
               console.log("The response from axios is: ", response.data);
     
               if (response && response.data) {
                 return {
-                  id: response.data.id || "temp-id", // Ensure an id is returned
+                  id: "temp-id", // Ensure an id is returned
                   email: username,
                   token: response.data.token // Include token if needed
                 };
