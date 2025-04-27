@@ -14,6 +14,7 @@ app.use(express.json());
 userRouter.post("/signup", async(req:Request,res:Response)=>{
     const parsedDataWithSuccess = CreateUserSchema.safeParse(req.body);
     if(!parsedDataWithSuccess.success){
+        console.log("The error is : ", parsedDataWithSuccess.error)
         res.status(400).json({
             message: parsedDataWithSuccess.error,
             mess:"Incorrect inputs"
@@ -53,6 +54,7 @@ userRouter.post("/signin", async (req,res)=>{
     const parsedDataWithSuccess = SigninSchema.safeParse(req.body);
 
     if(!parsedDataWithSuccess.success){
+        console.log("The error is unauthorized : ", parsedDataWithSuccess.error)
         res.status(400).json({
             message: parsedDataWithSuccess.error
         })
