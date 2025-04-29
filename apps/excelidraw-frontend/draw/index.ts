@@ -16,7 +16,6 @@ type Shape = {
 
 
 export default async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket){
-  
     const ctx = canvas.getContext("2d");
 
     // State variable
@@ -26,19 +25,23 @@ export default async function initDraw(canvas: HTMLCanvasElement, roomId: string
         return;
     }
 
-    socket.onmessage = (event) =>{
+    socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-
-        if(message.type==='chat'){
-            const parsedData = JSON.parse(message.message)
-            existingShape.push(parsedData.shape)
-            clearCanvas(existingShape, canvas);
-        }
         
+        if (message.type === 'chat') {
+            const parsedData = JSON.parse(message.message);
+            existingShape.push(parsedData.shape);
+            clearCanvas(existingShape, canvas);
+            
+            // Send acknowledgment if messageId exists
+            if (message.messageId) {
+                socket.send(JSON.stringify({
+                    type: "ack",
+                    messageId: message.messageId
+                }));
+            }
+        }
     }
-    
-    /* ctx.fillStyle = "rgba(0, 0, 0)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height); */
 
     clearCanvas(existingShape, canvas);
 
