@@ -3,15 +3,22 @@
 import { useEffect, useState } from "react";
 import { WS_URL } from "../../../config";
 import { Canvas } from "./Canvas";
+import { useSession } from "next-auth/react";
 
 export function RoomCanvas({ roomId }: { roomId: string }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
-
+  const { data: session } = useSession();
+  console.log("Session is : ", session?.accessToken);
   useEffect(() => {
     // const ws = new WebSocket(WS_URL);
-    const ws = new WebSocket(
-      `${WS_URL}?token=eyJhbGciOiJIUzI1NiJ9.ZTQ3NjYzNDgtMDI0Yi00OTgyLTk4ZWItZmVjMDE2ZDYyMDhi.XexxVK_5VNU_qdBWRBrM6B6_xYMsv5aCTKsCnzh9KlY`
-    );
+    // `${WS_URL}?token=eyJhbGciOiJIUzI1NiJ9.ZTQ3NjYzNDgtMDI0Yi00OTgyLTk4ZWItZmVjMDE2ZDYyMDhi.XexxVK_5VNU_qdBWRBrM6B6_xYMsv5aCTKsCnzh9KlY`
+    if (!session || !session?.accessToken) {
+      console.log("Waiting for session and token...");
+      setSocket(null);
+      return;
+    }
+
+    const ws = new WebSocket(`${WS_URL}?token=${session?.accessToken}`);
     ws.onopen = () => {
       setSocket(ws);
       ws.send(
@@ -21,7 +28,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
         })
       );
     };
-  }, []);
+  }, [session?.accessToken, roomId]);
 
   if (!socket) {
     return <div>Connecting to server</div>;

@@ -16,7 +16,7 @@ export default function Signin() {
       redirect: false, // Handle redirect manually
       username: email,
       password,
-      callbackUrl: "/dashboard", // Redirect here on success
+      callbackUrl: "/canvas/1", // Redirect here on success
     });
 
     if (result?.error) {
