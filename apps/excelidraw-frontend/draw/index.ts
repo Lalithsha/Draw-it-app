@@ -12,10 +12,14 @@ type Shape = {
     centerX:number;
     centerY:number;
     radius:number;
+} | {
+    type: "line",
+    x:number;
+    y:number;
 }
 
 
-export default async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket){
+export default async function initDraw(canvas: HTMLCanvasElement, roomId: string, socket: WebSocket, shapee: string){
     const ctx = canvas.getContext("2d");
 
     // State variable
@@ -59,33 +63,96 @@ export default async function initDraw(canvas: HTMLCanvasElement, roomId: string
         clicked = false;
         console.log("Mouse up", e.clientX);
         console.log("Mouse up", e.clientY);
+
         const width = e.clientX-startX;
         const height = e.clientY-startY;
-        const shape:Shape = {
-            type:"rect",
-            x:startX,
-            y:startY,
-            width,
-            height
+        
+        let shape:Shape |null = null ;
+        
+        if(shapee ==="line"){
+            shape = {
+                type:"line", 
+                x:startX,
+                y:startY
+            }
+            // existingShape.push(shape);
+            // socket.send(JSON.stringify({
+            //     type:"chat",
+            //     message: JSON.stringify({shape}),
+            //     roomId
+            // }))
         }
-        existingShape.push(shape)
-        socket.send(JSON.stringify({
-                type:"chat",
-                message:JSON.stringify({shape}),
-                roomId
-            }   
-        ))
+        else if(shapee === "rectangle"){        
+            const width = e.clientX-startX;
+            const height = e.clientY-startY;
+            shape = {
+                type:"rect",
+                x:startX,
+                y:startY,
+                width,
+                height
+            }
+            // existingShape.push(shape)
+            // socket.send(JSON.stringify({
+            //         type:"chat",
+            //         message:JSON.stringify({shape}),
+            //         roomId
+            //     }   
+            // ))
+        }
+        else if(shapee==="circle"){
+            const radius = Math.max(width, height)/2;
+            shape = {
+                type:"circle",
+                centerX:startX+radius,
+                centerY:startY+radius,
+                radius: radius,
+            }
+        }
 
+        if(!shape){
+            return;
+        }
+        
+        existingShape.push(shape)
+            socket.send(JSON.stringify({
+                    type:"chat",
+                    message:JSON.stringify({shape}),
+                    roomId
+                }   
+            ))
         
     });
 
     canvas.addEventListener("mousemove", (e) => {
         if (clicked) {
-        const width = e.clientX - startX;
-        const height = e.clientY - startY;
-        clearCanvas(existingShape, canvas);
-        ctx.strokeStyle = "rgba(255, 255, 255)";
-        ctx.strokeRect(startX, startY, width, height);
+            const width = e.clientX - startX;
+            const height = e.clientY - startY;
+            if(shapee === "rectangle"){
+            clearCanvas(existingShape, canvas);
+            ctx.strokeStyle = "rgba(255, 255, 255)";
+            ctx.strokeRect(startX, startY, width, height);
+            }
+            else if(shapee === "line"){
+                clearCanvas(existingShape, canvas);
+                ctx.strokeStyle ="rgba(255,255,255)";
+                ctx.beginPath();
+                ctx.moveTo(startX, startY); 
+                ctx.lineTo(e.clientX, e.clientY);
+                ctx.stroke();
+                ctx.closePath();
+            }
+            else if(shapee ==="circle"){
+                const centerX = startX + width /2 ;
+                const centerY = startY + height /2;
+                clearCanvas(existingShape, canvas);
+                const radius = Math.max(width, height)/2;
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(255, 255, 255)";
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.stroke(); // Added stroke for circle outline
+                ctx.closePath();
+            }
         }
     });
 }
@@ -104,6 +171,21 @@ function clearCanvas(existingShape:Shape[], canvas: HTMLCanvasElement){
         if(shape.type==='rect'){
             ctx.strokeStyle = "rgba(255, 255, 255)";
             ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+        }
+        else if(shape.type === 'circle'){
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255, 255, 255)";
+            ctx.arc(shape.centerX, shape.centerY, shape.radius, 0, Math.PI * 2);
+            ctx.stroke(); // Added stroke for circle outline
+            ctx.closePath();
+        }
+        else if(shape.type === 'line'){
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255, 255, 255)";
+            ctx.moveTo(shape.x, shape.y); 
+            ctx.lineTo(shape.x+100, shape.y+100); // Example line length
+            ctx.stroke();
+            ctx.closePath();
         }
     })
     

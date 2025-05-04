@@ -35,7 +35,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
   }
 
   return (
-    <div>
+    <div style={{ height: "100vh", overflow: "hidden" }}>
       <Canvas roomId={roomId} socket={socket} />
 
       {/* <canvas
