@@ -184,6 +184,7 @@ function clearCanvas(existingShape:Shape[], canvas: HTMLCanvasElement){
             ctx.strokeStyle = "rgba(255, 255, 255)";
             ctx.moveTo(shape.x, shape.y); 
             ctx.lineTo(shape.x+100, shape.y+100); // Example line length
+            // ctx.lineTo(shape.x, shape.y); // Example line length
             ctx.stroke();
             ctx.closePath();
         }

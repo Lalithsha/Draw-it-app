@@ -1,19 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import initDraw from "../../../draw";
 import IconButton from "@repo/ui/components/IconButton";
-import {
-  Circle,
-  Pencil,
-  RectangleEllipsisIcon,
-  RectangleHorizontal,
-} from "lucide-react";
+import { Circle, Pencil, Minus, RectangleHorizontal } from "lucide-react";
+import { Game } from "../../../draw/Game";
 
 // add enum for shape types : circle, line, pencil
-export enum ShapeType {
+export enum tool {
   Circle = "circle",
   Line = "line",
-  Rectangle = "rectangle",
+  Rectangle = "rect",
   Pencil = "pencil",
 }
 
@@ -25,18 +20,26 @@ export function Canvas({
   socket: WebSocket;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [shape, setShape] = useState("");
-  const [selectedTool, setSelectedTool] = useState<ShapeType>(ShapeType.Circle);
+  const [game, setGame] = useState<Game>();
+  // const [selectedTool, setSelectedTool] = useState<tool | null>(null);
+  const [selectedTool, setSelectedTool] = useState<tool>(tool.Circle);
 
-  const handleShapeChange = (newShape: string) => () => {
-    setShape(newShape);
-  };
+  useEffect(() => {
+    // game?.setTool(selectedTool as tool);
+    game?.setTool(selectedTool);
+  }, [selectedTool, game]);
 
   useEffect(() => {
     if (canvasRef.current) {
-      initDraw(canvasRef.current, roomId, socket, shape);
+      const g = new Game(canvasRef.current, roomId, socket);
+      setGame(g);
+      // initDraw(, shape);
+
+      return () => {
+        g.destroy();
+      };
     }
-  }, [canvasRef, shape]);
+  }, [canvasRef, roomId, socket]);
 
   return (
     <>
@@ -44,9 +47,8 @@ export function Canvas({
         ref={canvasRef}
         width={window.innerWidth}
         height={window.innerHeight}
-        style={{ border: "1px solid black" }}
       />
-      <div className=" absolute bottom-0 right-0 flex gap-2 m-2">
+      {/* <div className=" absolute bottom-0 right-0 flex gap-2 m-2">
         <button
           className="bg-blue-500 text-white p-2 rounded"
           onClick={handleShapeChange("circle")}
@@ -65,10 +67,7 @@ export function Canvas({
         >
           Rectangle
         </button>
-      </div>
-      <div className="bg-white text-black flex flex-row justify-center items-center h-screen w-screen">
-        hello world
-      </div>
+      </div> */}
       <TopBar selectedTool={selectedTool} setSelectedTool={setSelectedTool} />
     </>
   );
@@ -78,25 +77,30 @@ function TopBar({
   selectedTool,
   setSelectedTool,
 }: {
-  selectedTool: ShapeType;
-  setSelectedTool: (s: ShapeType) => void;
+  selectedTool: tool;
+  setSelectedTool: (s: tool) => void;
 }) {
   return (
     <div className="top-2 left-2 flex absolute  text-white border border-gray-400 rounded-md shadow-md">
       <IconButton
         activated={selectedTool === "pencil"}
         icon={<Pencil />}
-        onClick={() => setSelectedTool(ShapeType.Pencil)}
+        onClick={() => setSelectedTool(tool.Pencil)}
       />
       <IconButton
-        activated={selectedTool === "rectangle"}
+        activated={selectedTool === "rect"}
         icon={<RectangleHorizontal />}
-        onClick={() => setSelectedTool(ShapeType.Rectangle)}
+        onClick={() => setSelectedTool(tool.Rectangle)}
       />
       <IconButton
         activated={selectedTool === "circle"}
         icon={<Circle />}
-        onClick={() => setSelectedTool(ShapeType.Circle)}
+        onClick={() => setSelectedTool(tool.Circle)}
+      />
+      <IconButton
+        activated={selectedTool === "line"}
+        icon={<Minus />}
+        onClick={() => setSelectedTool(tool.Line)}
       />
     </div>
   );
