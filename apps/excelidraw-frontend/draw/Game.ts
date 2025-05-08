@@ -37,7 +37,7 @@ export class Game {
     private startX:number = 0;
     private startY:number = 0;
 
-    private selectedTool:tool = tool.Rectangle;
+    private selectedTool:tool = tool.Pencil;
     
     socket: WebSocket;
     
@@ -111,12 +111,32 @@ export class Game {
                 this.ctx.lineTo(shape.endX, shape.endY); // Example line length
                 // this.ctx.lineTo(shape.centerX, shape.y); // Example line length
                 this.ctx.stroke();
-                this.ctx.closePath();
+            }
+            else if(shape.type === 'pencil'){
+                // this.ctx.beginPath();
+                // this.ctx.strokeStyle = "rgba(255,255,255)";
+                this.ctx.lineCap = 'round'; // Good for smoother pencil strokes
+                this.ctx.lineJoin = 'round'; // Good for smoother pencil strokes
+                this.ctx.moveTo(shape.startX, shape.startY);
+                // this.ctx.lineTo(shape.endX,shape.endY);
+                this.ctx.lineTo(shape.endX,shape.endY);
+                this.ctx.stroke();
             }
         })
     }
     
 
+    // Converts mouse event coordinates to canvas-relative coordinates
+    private getMousePosition(e:MouseEvent):{x:number, y:number}{
+
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x:e.clientX - rect.left,
+            y:e.clientY - rect.top
+        }
+        
+    }
+    
     mouseDownHandler = (e:MouseEvent) => {
         this.clicked = true;    
         this.startX = e.clientX;
@@ -163,6 +183,17 @@ export class Game {
                 radius: radius,
             }
         }
+        else if(selectedTool === "pencil"){
+            // shape = {
+            //     type:"pencil",
+            //     startX: this.startX,
+            //     startY:this.startY,
+            //     endX:e.clientX - this.canvas.offsetLeft,
+            //     endY:e.offsetY - this.canvas.offsetTop
+            // }
+            // this.clicked = false;
+            shape = null;
+        }
 
         if(!shape){
             return;
@@ -175,9 +206,48 @@ export class Game {
                     roomId: this.roomId
                 }   
             ))
+
+        // Redraw the canvas to show the final shape (for rect, line, circle)
+        // or just to clear any temporary previews if no shape was finalized (e.g. pencil).
+        this.clearCanvas();
     }
     
     mouseMoveHandler=(e:MouseEvent)=>{
+
+        if(!this.clicked){
+            return;
+        }
+
+        const pos = this.getMousePosition(e);
+        const currentX = pos.x;
+        const currentY = pos.y;
+
+        if(this.selectedTool === "pencil"){
+            const pencilSegment: Shape = {
+                type: "pencil",
+                startX: this.startX,  // Previous point's X (canvas relative)
+                startY :this.startY,  // Previous point's Y (canvas relative)
+                endX: currentX,  // Current point's X (canvas relative)
+                endY: currentY // Current point's Y (canvas relative)
+            }
+
+            this.existingShape.push(pencilSegment);
+            this.socket.send(JSON.stringify({
+                type: "chat",
+                message: JSON.stringify({ shape: pencilSegment }),
+                roomId: this.roomId
+            }));
+
+            // IMPORTANT: Update startX and startY to the current position
+            // This makes the current end point the start point for the next segment
+            this.startX = currentX;
+            this.startY = currentY;
+            // Redraw the canvas to show the new segment immediately
+            this.clearCanvas();
+            
+        }
+        
+        
         if (this.clicked) {
             const width = e.clientX - this.startX;
             const height = e.clientY - this.startY;
@@ -204,6 +274,18 @@ export class Game {
                 this.ctx.stroke(); // Added stroke for circle outline
                 this.ctx.closePath();
             }
+            // else if(selectedTool === "pencil"){
+            //     // this.ctx.beginPath();
+            //     // this.ctx.lineCap = 'round';
+            //     // this.ctx.moveTo(this.startX, this.startY);
+            //     // // this.ctx.lineTo(e.offsetX,e.offsetY);
+            //     // this.ctx.lineTo(e.clientX -  this.canvas.offsetLeft, e.clientY - this.canvas.offsetTop);
+            //     // this.ctx.stroke();
+            //     // // this.ctx.closePath();
+
+            //     // Create a new segment for the pencil stroke
+                
+            // }
         }
     }
     
@@ -211,12 +293,22 @@ export class Game {
         this.canvas.addEventListener("mousedown", this.mouseDownHandler);
         this.canvas.addEventListener("mouseup", this.mouseUpHandler);
         this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
+
+        this.canvas.addEventListener("mouseleave", ()=>{
+            if(this.clicked){
+                this.clicked = false;
+                this.clearCanvas();
+            }
+        })
+        
     }
 
     destroy(){       
         this.canvas.removeEventListener("mousedown", this.mouseDownHandler);
         this.canvas.removeEventListener("mouseup", this.mouseUpHandler);
         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
+        // this.canvas.removeEventListener("mouseleave", () => { this.clicked = false; this.clearCanvas(); });
+        // this.clicked = false;
         // this.socket.close();
         // this.existingShape = [];
     }

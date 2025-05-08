@@ -22,7 +22,7 @@ export function Canvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game>();
   // const [selectedTool, setSelectedTool] = useState<tool | null>(null);
-  const [selectedTool, setSelectedTool] = useState<tool>(tool.Circle);
+  const [selectedTool, setSelectedTool] = useState<tool>(tool.Pencil);
 
   useEffect(() => {
     // game?.setTool(selectedTool as tool);
