@@ -216,37 +216,7 @@ export class Game {
 
         if(!this.clicked){
             return;
-        }
-
-        const pos = this.getMousePosition(e);
-        const currentX = pos.x;
-        const currentY = pos.y;
-
-        if(this.selectedTool === "pencil"){
-            const pencilSegment: Shape = {
-                type: "pencil",
-                startX: this.startX,  // Previous point's X (canvas relative)
-                startY :this.startY,  // Previous point's Y (canvas relative)
-                endX: currentX,  // Current point's X (canvas relative)
-                endY: currentY // Current point's Y (canvas relative)
-            }
-
-            this.existingShape.push(pencilSegment);
-            this.socket.send(JSON.stringify({
-                type: "chat",
-                message: JSON.stringify({ shape: pencilSegment }),
-                roomId: this.roomId
-            }));
-
-            // IMPORTANT: Update startX and startY to the current position
-            // This makes the current end point the start point for the next segment
-            this.startX = currentX;
-            this.startY = currentY;
-            // Redraw the canvas to show the new segment immediately
-            this.clearCanvas();
-            
-        }
-        
+        }        
         
         if (this.clicked) {
             const width = e.clientX - this.startX;
@@ -254,6 +224,12 @@ export class Game {
             this.clearCanvas();
             this.ctx.strokeStyle = "rgba(255, 255, 255)";
             const selectedTool = this.selectedTool;
+
+            const pos = this.getMousePosition(e);
+            const currentX = pos.x;
+            const currentY = pos.y;
+
+            
             if(selectedTool === "rect"){  
                 this.ctx.strokeRect(this.startX, this.startY, width, height);
             }
@@ -274,18 +250,30 @@ export class Game {
                 this.ctx.stroke(); // Added stroke for circle outline
                 this.ctx.closePath();
             }
-            // else if(selectedTool === "pencil"){
-            //     // this.ctx.beginPath();
-            //     // this.ctx.lineCap = 'round';
-            //     // this.ctx.moveTo(this.startX, this.startY);
-            //     // // this.ctx.lineTo(e.offsetX,e.offsetY);
-            //     // this.ctx.lineTo(e.clientX -  this.canvas.offsetLeft, e.clientY - this.canvas.offsetTop);
-            //     // this.ctx.stroke();
-            //     // // this.ctx.closePath();
+            else if(this.selectedTool === "pencil"){
+                const pencilSegment: Shape = {
+                    type: "pencil",
+                    startX: this.startX,  // Previous point's X (canvas relative)
+                    startY :this.startY,  // Previous point's Y (canvas relative)
+                    endX: currentX,  // Current point's X (canvas relative)
+                    endY: currentY // Current point's Y (canvas relative)
+                }
 
-            //     // Create a new segment for the pencil stroke
+                this.existingShape.push(pencilSegment);
+                this.socket.send(JSON.stringify({
+                    type: "chat",
+                    message: JSON.stringify({ shape: pencilSegment }),
+                    roomId: this.roomId
+                }));
+
+                // IMPORTANT: Update startX and startY to the current position
+                // This makes the current end point the start point for the next segment
+                this.startX = currentX;
+                this.startY = currentY;
+                // Redraw the canvas to show the new segment immediately
+                this.clearCanvas();
                 
-            // }
+            }
         }
     }
     
