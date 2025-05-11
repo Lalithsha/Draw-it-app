@@ -103,7 +103,7 @@ wss.on('connection', function connection(ws, request) {
     console.log("Parsed data: ", parsedData)
 
     if(parsedData.type === "join_room"){
-      console.log("From join room ws is: ",  ws)
+      // console.log("From join room ws is: ",  ws)
       // check here does this already room exists
       const user =  users.find(x=>x.ws===ws);
       user?.rooms.push(parsedData.roomId);

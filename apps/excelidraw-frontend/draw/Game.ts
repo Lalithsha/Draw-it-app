@@ -36,8 +36,20 @@ export class Game {
     private clicked : boolean;
     private startX:number = 0;
     private startY:number = 0;
+    private previousX: number = 0;
+    private previousY: number = 0;
 
-    private selectedTool:tool = tool.Pencil;
+    private viewportTransform: {
+      x: number;
+      y: number;
+      scale: number;
+    } = {
+      x: 0,
+      y: 0,
+      scale: 1
+    }
+
+    private selectedTool:tool|null = null;
     
     socket: WebSocket;
     
@@ -51,6 +63,9 @@ export class Game {
         this.init();
         this.initHandlers();
         this.initMouseHandlers();
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+
     }
     
     async init(){
@@ -141,6 +156,10 @@ export class Game {
         this.clicked = true;    
         this.startX = e.clientX;
         this.startY = e.clientY;
+
+        this.previousX = e.clientX;
+        this.previousY = e.clientY;
+        this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
     }
     
     mouseUpHandler = (e:MouseEvent) => {
@@ -210,6 +229,9 @@ export class Game {
         // Redraw the canvas to show the final shape (for rect, line, circle)
         // or just to clear any temporary previews if no shape was finalized (e.g. pencil).
         this.clearCanvas();
+
+         this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
+        
     }
     
     mouseMoveHandler=(e:MouseEvent)=>{
@@ -275,6 +297,12 @@ export class Game {
                 
             }
         }
+
+        this.clearCanvas();
+        this.render();
+
+        console.log(e);
+
     }
     
     initMouseHandlers(){
@@ -301,5 +329,23 @@ export class Game {
         // this.existingShape = [];
     }
     
-    
+    render = () => {
+        // New code 👇
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.setTransform(this.viewportTransform.scale, 0, 0, this.viewportTransform.scale, this.viewportTransform.x, this.viewportTransform.y);
+    }
+
+
+    updatePanning = (e: any) => {
+        const localX = e.clientX;
+        const localY = e.clientY;
+
+        this.viewportTransform.x += localX - this.previousX;
+        this.viewportTransform.y += localY - this.previousY;
+
+        this.previousX = localX;
+        this.previousY = localY;
+    }
+
 }
