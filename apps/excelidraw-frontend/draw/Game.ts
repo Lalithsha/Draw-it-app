@@ -153,6 +153,14 @@ export class Game {
     }
     
     mouseDownHandler = (e:MouseEvent) => {
+
+         if (this.selectedTool === null) { // If no tool is selected, enable panning
+        this.clicked = true;
+        this.previousX = e.clientX;
+        this.previousY = e.clientY;
+        return;
+    }
+        
         this.clicked = true;    
         this.startX = e.clientX;
         this.startY = e.clientY;
@@ -163,6 +171,12 @@ export class Game {
     }
     
     mouseUpHandler = (e:MouseEvent) => {
+
+         if (this.clicked) {
+        this.clicked = false;
+        return;
+    }
+        
         this.clicked = false;
         console.log("Mouse up", e.clientX);
         console.log("Mouse up", e.clientY);
@@ -236,6 +250,11 @@ export class Game {
     
     mouseMoveHandler=(e:MouseEvent)=>{
 
+
+        if (this.clicked) {
+            this.updatePanning(e);
+        }
+        
         if(!this.clicked){
             return;
         }        
@@ -329,15 +348,63 @@ export class Game {
         // this.existingShape = [];
     }
     
+    // render = () => {
+    //     // New code 👇
+    //     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    //     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    //     this.ctx.setTransform(this.viewportTransform.scale, 0, 0, this.viewportTransform.scale, this.viewportTransform.x, this.viewportTransform.y);
+    // }
+
     render = () => {
-        // New code 👇
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.setTransform(this.viewportTransform.scale, 0, 0, this.viewportTransform.scale, this.viewportTransform.x, this.viewportTransform.y);
-    }
+    // Reset transform before clearing
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Add black background
+    this.ctx.fillStyle = "rgba(0, 0, 0)";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Apply viewport transform
+    this.ctx.setTransform(
+        this.viewportTransform.scale, 
+        0, 
+        0, 
+        this.viewportTransform.scale, 
+        this.viewportTransform.x, 
+        this.viewportTransform.y
+    );
+    
+    // Redraw all existing shapes
+    this.existingShape.map((shape) => {
+        if (shape.type === 'rect') {
+            this.ctx.strokeStyle = "rgba(255, 255, 255)";
+            this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+        } else if (shape.type === 'circle') {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "rgba(255, 255, 255)";
+            this.ctx.arc(shape.centerX, shape.centerY, shape.radius, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.closePath();
+        } else if (shape.type === 'line') {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "rgba(255, 255, 255)";
+            this.ctx.moveTo(shape.startX, shape.startY);
+            this.ctx.lineTo(shape.endX, shape.endY);
+            this.ctx.stroke();
+        } else if (shape.type === 'pencil') {
+            // Draw pencil lines
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            this.ctx.moveTo(shape.startX, shape.startY);
+            this.ctx.lineTo(shape.endX, shape.endY);
+            this.ctx.stroke();
+        }
+        
+    });
+}
 
 
-    updatePanning = (e: any) => {
+    updatePanning = (e: MouseEvent) => {
         const localX = e.clientX;
         const localY = e.clientY;
 
@@ -346,6 +413,9 @@ export class Game {
 
         this.previousX = localX;
         this.previousY = localY;
+
+        // this.render();
+        // return;
     }
 
 }
