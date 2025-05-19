@@ -1,0 +1,264 @@
+// import { Tool } from "@/app/components/Canvas";
+import { ResizeHandle, Shape, Tool } from "../types/canvas";
+
+export class SelectionController{
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+    private selectedShape: Shape|null = null;
+
+    private isDragging: boolean = false;
+    private isResizing: boolean = false;
+    private dragOffset: {x:number, y:number} = {x:0, y:0}
+    private dragEndOffset: {x:number, y:number} = {x:0, y:0}
+    private activeResizeHandle: ResizeHandle| null = null;
+
+    private originalShapeBounds: {
+        x:number;
+        y:number;
+        width:number;
+        height:number;
+    } | null = null;
+    
+    
+    private setCursor(cursor: string) {
+        this.canvas.style.cursor = cursor;
+    }
+
+    private resetCursor() {
+        this.canvas.style.cursor = "";
+    }
+
+    constructor(canvas: HTMLCanvasElement, ctx:CanvasRenderingContext2D) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        // this.originalShapeBounds = {x:0, y:0, width:0, height:0};
+    }
+    
+    getSelectedShape():Shape|null{
+        return this.selectedShape;
+    }
+
+    setSelectedShape(shape: Shape|null){
+        this.selectedShape = shape;
+    }
+
+    // isSelectedShaped():boolean{
+    //     return this.selectedShape !==null;
+    // }
+
+     isShapeSelected(): boolean {
+        return this.selectedShape !== null;
+    }
+
+    
+    isDraggingShape(): boolean {
+        return this.isDragging;
+    }
+
+    isResizingShape(): boolean {
+        return this.isResizing;
+    }
+
+
+    getShapeBounds(shape: Shape):{x:number, y:number, width:number, height:number} {
+        switch(shape.type){
+            case Tool.Rectangle:
+                const left = shape.width < 0 ? shape.x + shape.width: shape.x;
+                const top = shape.height < 0 ? shape.y + shape.height:shape.y;
+                return {x:left, y:top, width:Math.abs(shape.width), height:Math.abs(shape.height)};
+
+             case Tool.Circle:
+                return {
+                    x: shape.centerX-shape.radius, 
+                    y: shape.centerY-shape.radius,
+                    width: 2 * shape.radius,
+                    height: 2 * shape.radius
+                }   
+
+            case Tool.Line:  
+            case Tool.Pencil:
+                const minX = Math.min(shape.startX, shape.endX);
+                const minY = Math.min(shape.startY, shape.endY);
+                const maxX = Math.max(shape.startX, shape.endX);
+                const maxY = Math.max(shape.startY, shape.endY);
+                const padding = 5;
+                return {
+                    x: minX - padding,
+                    y: minY - padding,
+                    width: maxX - minX + 2 * padding, 
+                    height: maxY - minY + 2 * padding
+                }
+            default:
+                return {x:0, y:0, width:0, height:0};    
+        }
+    }
+    
+    /** Check if a point is within a shape's bounds */
+    isPointInShape(x:number, y: number, shape: Shape):boolean{
+        const bounds = this.getShapeBounds(shape);
+        return x>= bounds.x && x<=bounds.x + bounds.width && y>= bounds.y && y<=bounds.y + bounds.height;
+    }
+    
+     /** Get resize handles for the bounding box */
+     private getResizeHandles(bounds:{x:number, y:number, width:number, height:number}): ResizeHandle[]{
+        return [
+            {x:bounds.x, y: bounds.y, cursor:"nw-resize", position:"top-left"},
+            {x:bounds.x + bounds.width, y:bounds.y, cursor:"ne-resize", position:"top-right"},
+            {x:bounds.x, y:bounds.y + bounds.height, cursor: "sw-resize",position:"bottom-left"},
+            {x:bounds.x + bounds.width, y:bounds.y + bounds.height, cursor:"se-resize", position:"bottom-right"}
+        ]
+    }
+
+    getResizeHandleAtPoint(x:number, y:number, bounds:{x:number, y:number, width:number, height:number}):ResizeHandle|null{
+
+        const handles = this.getResizeHandles(bounds);
+        const handleSize = 10;
+        for(const handle of handles){
+            if(Math.abs(x - handle.x) < handleSize / 2 && Math.abs(y-handle.y) < handleSize / 2 ){
+                return handle;
+            }
+        }
+        return null;
+    }
+    
+    /** Start dragging a shape */
+    startDragging(x:number, y:number){
+        if(this.selectedShape){
+            this.isDragging = true;
+            if(this.selectedShape.type === Tool.Rectangle){
+                this.dragOffset = {x: x - this.selectedShape.x, y: y- this.selectedShape.y};
+            }
+            else if(this.selectedShape.type === Tool.Circle) {
+                this.dragOffset = {x: x - this.selectedShape.centerX, y: y - this.selectedShape.centerY}
+            }
+            else if(this.selectedShape.type === Tool.Line || this.selectedShape.type === Tool.Pencil){
+                this.dragOffset = {x: x - this.selectedShape.startX, y: y - this.selectedShape.startY}
+                this.dragEndOffset={x:x-this.selectedShape.endX, y:y-this.selectedShape.endY};
+            }
+            this.setCursor("move");
+        }
+    }
+    
+     /** Update shape position while dragging */
+     updateDragging(x:number, y:number){
+        if(this.isDragging && this.selectedShape){
+            if(this.selectedShape.type === Tool.Rectangle){
+                this.selectedShape.x = x-this.dragOffset.x;
+                this.selectedShape.y = y-this.dragOffset.y;
+            }
+            else if(this.selectedShape.type === Tool.Circle){
+                this.selectedShape.centerX = x - this.dragOffset.x;
+                this.selectedShape.centerY = y - this.dragOffset.y;
+            }
+            else if(this.selectedShape.type === Tool.Line || this.selectedShape.type === Tool.Pencil){
+                this.selectedShape.startX = x - this.dragOffset.x;
+                this.selectedShape.startY = y - this.dragOffset.y;
+                this.selectedShape.endX = x - this.dragEndOffset.x;
+                this.selectedShape.endY = y - this.dragEndOffset.y;
+            }
+        }
+    }
+
+    /* Stop dragging */
+    stopDragging(){
+        this.isDragging = false;
+        this.resetCursor();
+    }
+    
+
+    startResizing(x:number, y:number){
+        if(this.selectedShape){
+            const bounds = this.getShapeBounds(this.selectedShape);
+            const handle = this.getResizeHandleAtPoint(x,y, bounds);
+            if(handle){
+                this.isResizing = true;
+                this.activeResizeHandle = handle;
+                this.originalShapeBounds={...bounds};
+                this.setCursor(handle.cursor);
+            }
+        }
+    }
+
+     /** Update shape size while resizing */
+    updateResizing(x: number, y: number) {
+        if (this.isResizing && this.selectedShape && this.activeResizeHandle && this.originalShapeBounds) {
+            const newBounds = { ...this.originalShapeBounds };
+            switch (this.activeResizeHandle.position) {
+                case "top-left":
+                    newBounds.width += newBounds.x - x;
+                    newBounds.height += newBounds.y - y;
+                    newBounds.x = x;
+                    newBounds.y = y;
+                    break;
+                case "top-right":
+                    newBounds.width = x - newBounds.x;
+                    newBounds.height += newBounds.y - y;
+                    newBounds.y = y;
+                    break;
+                case "bottom-left":
+                    newBounds.width += newBounds.x - x;
+                    newBounds.height = y - newBounds.y;
+                    newBounds.x = x;
+                    break;
+                case "bottom-right":
+                    newBounds.width = x - newBounds.x;
+                    newBounds.height = y - newBounds.y;
+                    break;
+            }
+
+            if (this.selectedShape.type === Tool.Rectangle) {
+                this.selectedShape.x = newBounds.x;
+                this.selectedShape.y = newBounds.y;
+                this.selectedShape.width = newBounds.width;
+                this.selectedShape.height = newBounds.height;
+            } else if (this.selectedShape.type === Tool.Circle) {
+                const centerX = newBounds.x + newBounds.width / 2;
+                const centerY = newBounds.y + newBounds.height / 2;
+                this.selectedShape.centerX = centerX;
+                this.selectedShape.centerY = centerY;
+                this.selectedShape.radius = Math.min(newBounds.width, newBounds.height) / 2;
+            } else if (this.selectedShape.type === Tool.Line || this.selectedShape.type === Tool.Pencil) {
+                switch (this.activeResizeHandle.position) {
+                    case "top-left":
+                        this.selectedShape.startX = x;
+                        this.selectedShape.startY = y;
+                        break;
+                    case "bottom-right":
+                        this.selectedShape.endX = x;
+                        this.selectedShape.endY = y;
+                        break;
+                    // Add "top-right" and "bottom-left" if needed
+                }
+            }
+        }
+    }
+
+    /** Stop resizing */
+    stopResizing() {
+        this.isResizing = false;
+        this.activeResizeHandle = null;
+        this.originalShapeBounds = null;
+        this.resetCursor();
+    }
+
+    /** Draw the selection box with resize handles */
+    drawSelectionBox(bounds: { x: number; y: number; width: number; height: number }) {
+        this.ctx.save();
+        this.ctx.strokeStyle = "#6965db"; // Selection box color
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+
+        const handles = this.getResizeHandles(bounds);
+        handles.forEach(handle => {
+            this.ctx.fillStyle = "#ffffff"; // Handle fill
+            this.ctx.strokeStyle = "#6965db"; // Handle border
+            this.ctx.beginPath();
+            this.ctx.rect(handle.x - 5, handle.y - 5, 10, 10);
+            this.ctx.fill();
+            this.ctx.stroke();
+        });
+        this.ctx.restore();
+    }
+    
+}
+
