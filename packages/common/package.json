@@ -1,20 +1,29 @@
 {
   "name": "@repo/common",
   "version": "1.0.0",
-  "main": "./src/types.ts",
-  "types": "./src/types.ts",
+  "main": "./dist/types.js",
+  "types": "./dist/types.d.ts",
+  "type": "module",
   "exports": {
     ".": {
-      "types": "./src/types.ts",
-      "default": "./src/types.ts"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "default": "./dist/types.js"
     },
     "./types": {
-      "types": "./src/types.ts",
-      "default": "./src/types.ts"
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "default": "./dist/types.js"
     }
   },
+  "files": [
+    "dist/**/*"
+  ],
   "description": "",
   "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "dev": "tsc -b --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {

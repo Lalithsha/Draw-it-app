@@ -1,9 +1,4 @@
-import {
-  ForwardRefExoticComponent,
-  ReactNode,
-  RefAttributes,
-  SVGProps,
-} from "react";
+import { ReactNode } from "react";
 
 export default function IconButton({
   icon,
@@ -11,12 +6,24 @@ export default function IconButton({
   activated,
 }: {
   icon: ReactNode;
-  onClick: () => void; // Change 'void' to '() => void' for proper type
+  onClick: () => void;
   activated: boolean;
 }) {
   return (
     <div
-      className={`pointer rounded-md m-2 p-2 hover:bg-gray-200  transition duration-200 ease-in-out ${activated ? "bg-blue-500" : "text-white"}`}
+      className={`
+        cursor-pointer 
+        rounded-md 
+        m-2 
+        p-2 
+        transition 
+        duration-200 
+        ease-in-out 
+        ${activated 
+          ? "bg-blue-600 text-white hover:bg-blue-700" 
+          : "bg-black text-white hover:bg-gray-700"
+        }
+      `}
       onClick={onClick}
     >
       {icon}

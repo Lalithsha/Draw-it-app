@@ -14,8 +14,48 @@ export const CreateRoomSchema = z.object({
 })
 
 
+export enum WsDataType {
+  JOIN = "join_room",
+  LEAVE = "leave_room",
+  CHAT = "chat",
+  USER_JOINED = "USER_JOINED",
+  USER_LEFT = "USER_LEFT",
+  DRAW = "DRAW",
+  ERASER = "ERASER",
+  UPDATE = "UPDATE",
+  EXISTING_PARTICIPANTS = "EXISTING_PARTICIPANTS",
+  CLOSE_ROOM = "CLOSE_ROOM",
+  CONNECTION_READY = "CONNECTION_READY",
+  EXISTING_SHAPES = "EXISTING_SHAPES",
+  STREAM_SHAPE = "STREAM_SHAPE",
+  STREAM_UPDATE = "STREAM_UPDATE",
+  CURSOR_MOVE = "CURSOR_MOVE",
+  ACKENOWLEDGE = "ack",
+}
+
+export type RoomParticipants = {
+  userId: string;
+  userName: string;
+};
 
 
+export interface WebSocketMessage {
+  id: string | null;
+  type: WsDataType;
+  connectionId: string;
+  roomId: string;
+  userId: string;
+  userName: string | null;
+  message: string | null;
+  participants: RoomParticipants[] | null;
+  timestamp: string | null;
+  messageId: string;
+}
 
-
-
+export interface WebSocketChatMessage {
+  userId: string;
+  userName: string;
+  message: string;
+  timestamp: string;
+  type: WsDataType;
+}

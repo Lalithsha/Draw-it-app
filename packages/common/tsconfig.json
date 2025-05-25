@@ -1,7 +1,16 @@
 {
     "extends":"@repo/typescript-config/base.json",
     "compilerOptions": {
-        "rootDir": "./src"
+        "rootDir": "./src",
+        "outDir": "./dist", // Output compiled files to dist/
+        "module": "ES2022",
+        "target": "ES2022",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true
     },
     "include": ["src/**/*"]
 }

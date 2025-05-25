@@ -1,5 +1,6 @@
 // import { Tool } from "@/app/components/Canvas";
 import { ResizeHandle, Shape, Tool } from "../types/canvas";
+import Game from "./Game";
 
 export class SelectionController{
     private canvas: HTMLCanvasElement;
@@ -20,6 +21,8 @@ export class SelectionController{
     } | null = null;
     
     
+    private game:  Game;
+    
     private setCursor(cursor: string) {
         this.canvas.style.cursor = cursor;
     }
@@ -28,9 +31,10 @@ export class SelectionController{
         this.canvas.style.cursor = "";
     }
 
-    constructor(canvas: HTMLCanvasElement, ctx:CanvasRenderingContext2D) {
+    constructor(canvas: HTMLCanvasElement, ctx:CanvasRenderingContext2D, game: Game) {
         this.canvas = canvas;
         this.ctx = ctx;
+        this.game = game;
         // this.originalShapeBounds = {x:0, y:0, width:0, height:0};
     }
     
@@ -163,6 +167,9 @@ export class SelectionController{
     stopDragging(){
         this.isDragging = false;
         this.resetCursor();
+        if (this.selectedShape) { // Check if a shape is selected
+            this.game.sendShapeUpdate(this.selectedShape); // Call the new method in Game
+        }
     }
     
 
@@ -239,6 +246,9 @@ export class SelectionController{
         this.activeResizeHandle = null;
         this.originalShapeBounds = null;
         this.resetCursor();
+        if (this.selectedShape) { // Check if a shape is selected
+            this.game.sendShapeUpdate(this.selectedShape); // Call the new method in Game
+        }
     }
 
     /** Draw the selection box with resize handles */

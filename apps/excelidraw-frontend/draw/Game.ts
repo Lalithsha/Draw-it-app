@@ -39,7 +39,7 @@ export class Game {
         this.roomId = roomId;
         this.socket = socket;
         this.clicked = false;
-        this.selectionController = new SelectionController(this.canvas, this.ctx); // Add this line
+        this.selectionController = new SelectionController(this.canvas, this.ctx, this); // Add this line
         this.init();
         this.initHandlers();
         this.initMouseHandlers();
@@ -436,14 +436,23 @@ export class Game {
         // this.canvas.addEventListener("mouseup", this.mouseUpHandler);
         // this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
     private screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
-    const rect = this.canvas.getBoundingClientRect();
-    const clientX = screenX - rect.left;
-    const clientY = screenY - rect.top;
-    return {
-        x: (clientX - this.viewportTransform.x) / this.viewportTransform.scale,
-        y: (clientY - this.viewportTransform.y) / this.viewportTransform.scale
-    };
-}
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = screenX - rect.left;
+        const clientY = screenY - rect.top;
+        return {
+            x: (clientX - this.viewportTransform.x) / this.viewportTransform.scale,
+            y: (clientY - this.viewportTransform.y) / this.viewportTransform.scale
+        };
+    }
+
+ sendShapeUpdate(shape: Shape) {
+        this.socket.send(JSON.stringify({
+            type: "chat",
+            message: JSON.stringify({ shape }),
+            roomId: this.roomId
+        }));
+    }
+
 
 }
 export default Game;

@@ -2,8 +2,9 @@ import { WebSocket, WebSocketServer } from 'ws';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import {prismaClient} from "@repo/db/client"
 import dotenv from "dotenv";
-import path from "path";
+import path, { parse } from "path";
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
+import {WsDataType, WebSocketMessage, WebSocketChatMessage} from "@repo/common/types"
 
 const wss = new WebSocketServer({ port: 8081 });
 
@@ -19,6 +20,7 @@ interface PendingAckMessage {
 }
 
 interface User{
+  connectionId:string,
   ws:WebSocket,
   rooms:string[],
   userId:string,
@@ -88,7 +90,26 @@ wss.on('connection', function connection(ws, request) {
     return null;
   }
 
+  
+/*   if (!userId) {
+    console.error("Connection rejected: invalid user");
+    ws.close(1008, "User not authenticated");
+    return;
+  } */
+
+  const connectionId = generateConnectionId();
+  
+  // const newConnection: Connection = {
+  //   connectionId,
+  //   userId,
+  //   userName: userId,
+  //   ws,
+  //   rooms: [],
+  // };
+  // connections.push(newConnection);
+  
   users.push({
+    connectionId,
     userId,
     rooms:[],
     ws,
@@ -96,52 +117,75 @@ wss.on('connection', function connection(ws, request) {
   })
   
 
+  ws.send(
+    JSON.stringify({
+      type: WsDataType.CONNECTION_READY,
+      connectionId,
+    })
+  );
+  console.log("✅ Sent CONNECTION_READY to:", connectionId);
+
+  ws.on("error", (err) =>
+    console.error(`WebSocket error for user ${userId}:`, err)
+  );
+  
   ws.on('message', async function message(data) {
 
-    const parsedData = JSON.parse(data.toString()); // {type:"join-room", roomId:1}
+    const parsedData:WebSocketMessage  = JSON.parse(data.toString()); // {type:"join-room", roomId:1}
     // const parsedData = JSON.parse(data as unknown as string); // {type: "join-room", roomId: 1}
     console.log("Parsed data: ", parsedData)
 
-    if(parsedData.type === "join_room"){
+     switch (parsedData.type) {
+     case WsDataType.JOIN:
+      {
       // console.log("From join room ws is: ",  ws)
       // check here does this already room exists
       const user =  users.find(x=>x.ws===ws);
       user?.rooms.push(parsedData.roomId);
     }
+    break;
 
-    if(parsedData.type === "leave_room"){
+    case WsDataType.LEAVE:
+      {
       const user = users.find(x=>x.ws===ws);
       if(!user){
         return;
       }
       
-      user.rooms = user.rooms.filter(x=>x===parsedData.room);
+      // room -> roomId
+      user.rooms = user.rooms.filter(x=>x===parsedData.roomId);
     }
-    
-    if(parsedData.type==="chat"){
-      const {roomId, message} = parsedData;
-      await prismaClient.chat.create({
-        data:{
-          roomId: Number(roomId),
-          message,
-          userId
-        }
-      })
+    break;
 
-      users.forEach(user=>{
-        if(user.rooms.includes(roomId)){
-          // Use sendWithAck instead of ws.send directly
-          sendWithAck(user, {
-            type:"chat",
+    case WsDataType.CHAT:
+    {
+        const {roomId, message} = parsedData;
+
+        if(message!==null && message!==undefined){
+          return;
+        }
+
+        await prismaClient.chat.create({
+          data:{
+            roomId: Number(roomId),
             message,
-            roomId
-          });
-        }
-      })
-      
+            userId
+          }
+        })
+
+        users.forEach(user=>{
+          if(user.rooms.includes(roomId)){
+            // Use sendWithAck instead of ws.send directly
+            sendWithAck(user, {
+              type:"chat",
+              message,
+              roomId
+            });
+          }
+        })
     }
 
-    if (parsedData.type === "ack") {
+    case WsDataType.ACKENOWLEDGE: {
       const { messageId } = parsedData;
       const user = users.find(u => u.ws === ws);
       if (user && messageId) {
@@ -153,8 +197,8 @@ wss.on('connection', function connection(ws, request) {
       }
     }
     
+  };
   });
-
   // ws.send('something');
 });
 
@@ -183,5 +227,9 @@ setInterval(() => {
     }
   });
 }, ACK_TIMEOUT / 2); // Check roughly twice per timeout period
+
+function generateConnectionId(): string {
+  return `conn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
 
 console.log("WebSocket server started on port 8081");
