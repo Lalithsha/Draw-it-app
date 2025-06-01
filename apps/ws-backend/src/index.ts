@@ -28,6 +28,7 @@ interface User{
 }
 
 const users: User[] =[]
+const roomShapes: Record<string, WebSocketMessage[]>={};
 const ACK_TIMEOUT = 5000; // 5 seconds timeout for acknowledgments
 const MAX_RETRIES = 3; // Maximum number of times to resend a message
 
@@ -135,14 +136,34 @@ wss.on('connection', function connection(ws, request) {
     // const parsedData = JSON.parse(data as unknown as string); // {type: "join-room", roomId: 1}
     console.log("Parsed data: ", parsedData)
 
+     const connection = users.find(
+        (x) => x.connectionId === connectionId
+      );
+    
+    if (!connection) {  
+      console.error(`Connection is false: ${connectionId}`);
+      return;
+    }
+     
+    if(connection === null){
+      console.error(`Connection is null: ${connectionId}`);
+      return;
+    }
+
+    if(connection ===undefined){
+      console.error(`Connection is undefined: ${connectionId}`);
+      return;
+    }
+    
      switch (parsedData.type) {
-     case WsDataType.JOIN:
+
+    case WsDataType.JOIN:
       {
       // console.log("From join room ws is: ",  ws)
       // check here does this already room exists
       const user =  users.find(x=>x.ws===ws);
       user?.rooms.push(parsedData.roomId);
-    }
+      }
     break;
 
     case WsDataType.LEAVE:
@@ -161,10 +182,16 @@ wss.on('connection', function connection(ws, request) {
     {
         const {roomId, message} = parsedData;
 
-        if(message!==null && message!==undefined){
+        if(message == null){
           return;
         }
 
+        // check if the message type is string or not. if not then return 
+        if(typeof message!=="string"){
+          console.error("Message is not a string");
+          return;
+        }
+        
         await prismaClient.chat.create({
           data:{
             roomId: Number(roomId),
@@ -177,15 +204,16 @@ wss.on('connection', function connection(ws, request) {
           if(user.rooms.includes(roomId)){
             // Use sendWithAck instead of ws.send directly
             sendWithAck(user, {
-              type:"chat",
+              type: WsDataType.CHAT,
               message,
               roomId
             });
           }
         })
     }
+    break;
 
-    case WsDataType.ACKENOWLEDGE: {
+    case WsDataType.ACKNOWLEDGE: {
       const { messageId } = parsedData;
       const user = users.find(u => u.ws === ws);
       if (user && messageId) {
@@ -196,10 +224,43 @@ wss.on('connection', function connection(ws, request) {
         }
       }
     }
+    break;
     
-  };
+    case WsDataType.STREAM_SHAPE:
+      {
+
+        const {roomId, message, messageId} = parsedData;
+
+        broadcastToRoom(roomId, {
+          id: parsedData.id ?? null,
+          type: parsedData.type ?? "join",
+          connectionId: connection.connectionId ?? "1",
+          message: message ?? "hi",
+          messageId: messageId ?? uuidv4(), // Generate a new messageId if not provided
+          roomId: roomId ?? "1",
+          userId: connection.userId ?? "1"
+          });
+      }
+      break;
+    case WsDataType.STREAM_UPDATE:
+      {
+
+      } 
+    } 
   });
   // ws.send('something');
+  // case WsDataType.STREAM_UPDATE:
+    //   {
+    //     broadcastToRoom(parsedData.roomId, {
+    //       type: parsedData.type,
+    //       id: parsedData.id,
+    //       message: parsedData.message,
+    //       roomId: parsedData.roomId,
+    //       userId: connection.userId,
+    //       userName: connection.userName,
+    //       connectionId: connection.connectionId,
+    //     });
+    //   }
 });
 
 // Periodically check for timed-out messages
@@ -230,6 +291,26 @@ setInterval(() => {
 
 function generateConnectionId(): string {
   return `conn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+function broadcastToRoom(roomId: string, message: WebSocketMessage) {
+  users.forEach(user => {
+    if (user.rooms.includes(roomId)) {
+      sendWithAck(user, {
+        id: message.id ?? null,
+        type: message.type,
+        connectionId: message.connectionId ?? "1",
+        messageId: message.messageId ?? uuidv4(), // Generate a new messageId if not provided
+        message: message.message,
+        roomId: roomId,
+        userId: message.userId,
+        // connectionId: message.connectionId,
+        // userName: message.userName,
+        // participants: message.participants,
+        // timestamp: message.timestamp
+      });
+    }
+  });
 }
 
 console.log("WebSocket server started on port 8081");

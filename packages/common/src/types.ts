@@ -30,7 +30,7 @@ export enum WsDataType {
   STREAM_SHAPE = "STREAM_SHAPE",
   STREAM_UPDATE = "STREAM_UPDATE",
   CURSOR_MOVE = "CURSOR_MOVE",
-  ACKENOWLEDGE = "ack",
+  ACKNOWLEDGE = "ack",
 }
 
 export type RoomParticipants = {
@@ -45,10 +45,10 @@ export interface WebSocketMessage {
   connectionId: string;
   roomId: string;
   userId: string;
-  userName: string | null;
+  // userName: string | null;
   message: string | null;
-  participants: RoomParticipants[] | null;
-  timestamp: string | null;
+  // participants: RoomParticipants[] | null;
+  // timestamp: string | null;
   messageId: string;
 }
 
