@@ -162,6 +162,10 @@ wss.on('connection', function connection(ws, request) {
       // console.log("From join room ws is: ",  ws)
       // check here does this already room exists
       const user =  users.find(x=>x.ws===ws);
+      if (!user) {
+        console.error("User not found");
+        return;
+      }      
       user?.rooms.push(parsedData.roomId);
       }
     break;
