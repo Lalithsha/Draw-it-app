@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { WS_URL } from "../../../config";
 import { Canvas } from "./Canvas";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export function RoomCanvas({ roomId }: { roomId: string }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const { data: session } = useSession();
-  console.log("Session is : ", session?.accessToken);
+  const router = useRouter();
   useEffect(() => {
     // const ws = new WebSocket(WS_URL);
     // `${WS_URL}?token=eyJhbGciOiJIUzI1NiJ9.ZTQ3NjYzNDgtMDI0Yi00OTgyLTk4ZWItZmVjMDE2ZDYyMDhi.XexxVK_5VNU_qdBWRBrM6B6_xYMsv5aCTKsCnzh9KlY`
@@ -17,7 +18,6 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
       setSocket(null);
       return;
     }
-
     const ws = new WebSocket(`${WS_URL}?token=${session?.accessToken}`);
     ws.onopen = () => {
       setSocket(ws);
@@ -29,6 +29,28 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
       );
     };
   }, [session?.accessToken, roomId]);
+
+  if (!session) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="mb-4 text-lg font-semibold">
+          You must be signed in to access the canvas.
+        </div>
+        <button
+          className="px-4 py-2 bg-excali-purple text-white rounded hover:bg-purple-700"
+          onClick={() => router.push("/signin")}
+        >
+          Go to Login
+        </button>
+        <button
+          className="mt-2 px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400"
+          onClick={() => router.push("/signup")}
+        >
+          Sign Up
+        </button>
+      </div>
+    );
+  }
 
   if (!socket) {
     return <div>Connecting to server</div>;

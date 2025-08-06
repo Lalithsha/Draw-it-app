@@ -1,9 +1,13 @@
 import React, { useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Menu, X } from "lucide-react";
+import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 const NavBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
 
   return (
     <nav className="py-4 w-full sticky top-0 bg-white/80 backdrop-blur-md z-50">
@@ -34,9 +38,21 @@ const NavBar = () => {
           >
             Testimonials
           </a>
-          <Button className="bg-excali-purple hover:bg-purple-700 text-white ml-4">
-            Try Now
-          </Button>
+          {session ? (
+            <Button
+              className="bg-excali-purple hover:bg-purple-700 text-white ml-4"
+              onClick={() => signOut()}
+            >
+              Logout
+            </Button>
+          ) : (
+            <Button
+              className="bg-excali-purple hover:bg-purple-700 text-white ml-4"
+              onClick={() => router.push("/signin")}
+            >
+              Login
+            </Button>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -75,12 +91,27 @@ const NavBar = () => {
             >
               Testimonials
             </a>
-            <Button
-              className="bg-excali-purple hover:bg-purple-700 text-white w-full"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Try Now
-            </Button>
+            {session ? (
+              <Button
+                className="bg-excali-purple hover:bg-purple-700 text-white w-full"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  signOut();
+                }}
+              >
+                Logout
+              </Button>
+            ) : (
+              <Button
+                className="bg-excali-purple hover:bg-purple-700 text-white w-full"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  router.push("/signin");
+                }}
+              >
+                Login
+              </Button>
+            )}
           </div>
         </div>
       )}

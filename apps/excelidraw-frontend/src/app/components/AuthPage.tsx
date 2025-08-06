@@ -1,6 +1,8 @@
 import Input from "@repo/ui/components/Input2";
 import { TurbopackRuleConfigItemOptions } from "next/dist/server/config-shared";
 import Link from "next/link";
+import { signIn, signOut } from "next-auth/react";
+import Signup from "../signup/page";
 
 interface BaseAuthProps {
   email: string;
@@ -115,6 +117,22 @@ export function AuthPage(props: AuthProps) {
               {isSignIn ? "Sign In" : "Sign Up"}
             </button>
           </div>
+          {isSignIn ? (
+            <div
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out"
+              onClick={() => signIn("google")}
+            >
+              Sign in with google
+            </div>
+          ) : (
+            <div
+              className=" text-sm text-center text-gray-600 hover:text-indigo-500 cursor-pointer 
+            "
+              onClick={() => Signup()}
+            >
+              Sign up with google
+            </div>
+          )}
         </form>
         <div className="text-sm text-center text-gray-600">
           {isSignIn ? (

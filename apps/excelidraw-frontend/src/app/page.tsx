@@ -18,8 +18,11 @@ import HowItWorks from "./components/HowItWorks";
 import TestimonialsSection from "./components/TestimonialsSection";
 import CTASection from "./components/CTASection";
 import Footer from "./components/Footer";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Home() {
+  const { data: session } = useSession();
+
   return (
     // <QueryClientProvider client={queryClient}>
     //   <TooltipProvider>
