@@ -98,7 +98,7 @@ userRouter.post("/signin", async (req,res)=>{
         // })
 
         // @ts-ignore    
-        const token =  jwt.sign(user.id, process.env.JWT_SECRET);
+        const token =  jwt.sign({id:user.id}, process.env.JWT_SECRET);
         res.cookie("access_token", token, {
             httpOnly:true,
             // secure:true,
