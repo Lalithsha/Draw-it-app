@@ -10,7 +10,10 @@ declare global {
 }
 
 export function authMiddleware(req:Request, res:Response, next:NextFunction){
-    const token = req.cookies.access_token;
+    const cookieToken = req.cookies?.access_token as string | undefined;
+    const header = (req.headers["authorization"] || req.headers["Authorization"]) as string | undefined;
+    const headerToken = header && header.startsWith("Bearer ") ? header.substring("Bearer ".length) : undefined;
+    const token = cookieToken || headerToken;
     if (!token) {
         res.status(401).json({ message: "No token, please login" });
         return;
@@ -19,18 +22,16 @@ export function authMiddleware(req:Request, res:Response, next:NextFunction){
     console.log(token);
     try {
     // @ts-ignore
-    const decoded = jwt.verify(token,process.env.JWT_SECRET) 
+    const decoded = jwt.verify(token,process.env.JWT_SECRET as string) as { id?: string; type?: string } 
     console.log(decoded);
-    if(!decoded){
+    if(!decoded || decoded.type !== 'access'){
         res.status(403).json({
             message:"Unauthorized"
         })
         return;
     } else {
-        // @ts-ignore    
         console.log("From auth middleware  ",  decoded.id);
-        // @ts-ignore
-        req.userId = decoded.id;
+        req.userId = decoded.id as string;
         next();
     }
     } catch (err) {

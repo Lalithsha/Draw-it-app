@@ -6,6 +6,7 @@ import axios from "axios";
 declare module "next-auth" {
   interface Session extends DefaultSession {
     accessToken?: string;
+    user: DefaultSession["user"] & { id?: string };
   }
 }
 
@@ -35,15 +36,17 @@ const handler = NextAuth({
             try {
               const response = await axios.post(
                 `http://localhost:3001/api/v1/user/signin`,
-                { username, password }
+                { username, password },
+                { withCredentials: true }
               );
               console.log("The response from axios is: ", response.data);
               
               if (response && response.data) {
                 return {
-                  id: "temp-id", // Ensure an id is returned
-                  email: username,
-                  accessToken: response.data.token // Include token if needed
+                  id: response.data.user?.id ?? 'temp-id',
+                  email: response.data.user?.email ?? username,
+                  name: response.data.user?.name,
+                  accessToken: response.data.token
                 };
 
               }
@@ -62,13 +65,26 @@ const handler = NextAuth({
       ],
       secret: process.env.NEXTAUTH_SECRET,
       callbacks: {
+        async signIn({ user, account }) {
+          if (account?.provider === 'google') {
+            const email = encodeURIComponent(user.email || "");
+            const name = encodeURIComponent(user.name || "");
+            // Redirect to client bridge page so cookies are set in the browser context
+            return `/auth/bridge?email=${email}&name=${name}&redirect=${encodeURIComponent("/canvas/1")}`;
+          }
+          return true;
+        },
         async jwt({ token, user }) {
           // When the user signs in, `user` contains the object returned by `authorize`
           console.log('The user token is ', token, '\n The user is: ', user);
           if (user && 'accessToken' in user) {
             console.log("The user object is: ", user);
             token.accessToken = (user as { accessToken: string }).accessToken;
+            token.id = (user as { id?: string }).id;
+            token.email = (user as { email?: string }).email;
+            token.name = (user as { name?: string }).name;
           }
+          // Optionally, we could refresh here if needed by calling backend /refresh
           return token;
         },
         async session({ session, token }) {
@@ -76,6 +92,13 @@ const handler = NextAuth({
           if (token.accessToken) {
             session.accessToken = token.accessToken;
           }
+          const jwtToken = token as unknown as { id?: string; email?: string; name?: string; accessToken?: string };
+          session.user = {
+            ...session.user,
+            id: jwtToken.id,
+            email: jwtToken.email,
+            name: jwtToken.name,
+          };
           console.log("The session object is: ", session);
           return session;
         },

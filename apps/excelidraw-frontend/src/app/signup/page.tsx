@@ -15,7 +15,8 @@ export default function Signup() {
     try {
       const response = await axios.post(
         "http://localhost:3001/api/v1/user/signup",
-        { username: email, password, name }
+        { username: email, password, name },
+        { withCredentials: true }
       );
       console.log("Sign-up successful:", response.data);
       window.location.href = "/signin"; // Redirect to sign-in after success

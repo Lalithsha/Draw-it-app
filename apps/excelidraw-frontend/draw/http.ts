@@ -3,7 +3,7 @@ import { HTTP_BACKEND } from "../config";
 
 export async function getExistingShapes(roomId:string){
 
-    const response =  await axios.get(`${HTTP_BACKEND}/chats/${roomId}`);
+    const response =  await axios.get(`${HTTP_BACKEND}/chats/${roomId}`, { withCredentials: true });
     const messages = response.data.messages;
     console.log("result for message from excelidraw fronted is: ", messages);
 
