@@ -1,9 +1,9 @@
-import axios from "axios";
+import { api } from "@/app/lib/api";
 import { HTTP_BACKEND } from "../config";
 
 export async function getExistingShapes(roomId:string){
 
-    const response =  await axios.get(`${HTTP_BACKEND}/chats/${roomId}`, { withCredentials: true });
+    const response =  await api.get(`${HTTP_BACKEND}/chats/${roomId}`);
     const messages = response.data.messages;
     console.log("result for message from excelidraw fronted is: ", messages);
 

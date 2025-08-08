@@ -1,13 +1,39 @@
 import React, { useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Menu, X } from "lucide-react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
+import { api } from "@/app/lib/api";
 import { useRouter } from "next/navigation";
 
 const NavBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: session } = useSession();
   const router = useRouter();
+
+  // Method to handle logout logic
+  const handleLogout = async () => {
+    try {
+      await api.post(`http://localhost:3001/api/v1/user/logout`, {});
+    } catch {}
+    await signOut({ callbackUrl: "/" });
+  };
+
+  // Method to handle mobile logout (closes menu first)
+  const handleMobileLogout = async () => {
+    setIsMenuOpen(false);
+    await handleLogout();
+  };
+
+  // Method to handle login (desktop)
+  const handleLogin = () => {
+    router.push("/signin");
+  };
+
+  // Method to handle login (mobile, closes menu first)
+  const handleMobileLogin = () => {
+    setIsMenuOpen(false);
+    router.push("/signin");
+  };
 
   return (
     <nav className="py-4 w-full sticky top-0 bg-white/80 backdrop-blur-md z-50">
@@ -41,14 +67,14 @@ const NavBar = () => {
           {session ? (
             <Button
               className="bg-excali-purple hover:bg-purple-700 text-white ml-4"
-              onClick={() => signOut()}
+              onClick={handleLogout}
             >
               Logout
             </Button>
           ) : (
             <Button
               className="bg-excali-purple hover:bg-purple-700 text-white ml-4"
-              onClick={() => router.push("/signin")}
+              onClick={handleLogin}
             >
               Login
             </Button>
@@ -94,20 +120,14 @@ const NavBar = () => {
             {session ? (
               <Button
                 className="bg-excali-purple hover:bg-purple-700 text-white w-full"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  signOut();
-                }}
+                onClick={handleMobileLogout}
               >
                 Logout
               </Button>
             ) : (
               <Button
                 className="bg-excali-purple hover:bg-purple-700 text-white w-full"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  router.push("/signin");
-                }}
+                onClick={handleMobileLogin}
               >
                 Login
               </Button>
