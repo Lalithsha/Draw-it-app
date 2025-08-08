@@ -20,5 +20,9 @@
   },
   "exports":{
     "./env":"./.env"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }
