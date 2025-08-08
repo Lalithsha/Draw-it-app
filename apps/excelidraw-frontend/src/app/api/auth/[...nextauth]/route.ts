@@ -1,4 +1,5 @@
-import NextAuth, { DefaultSession } from "next-auth";
+import NextAuth, { DefaultSession, type NextAuthOptions, type Session, type User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import axios from "axios";
@@ -13,10 +14,13 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
+    id?: string;
+    email?: string;
+    name?: string;
   }
 }
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
     providers: [
         CredentialsProvider({
           name: "Login with email",
@@ -65,7 +69,7 @@ const handler = NextAuth({
       ],
       secret: process.env.NEXTAUTH_SECRET,
       callbacks: {
-        async signIn({ user, account }) {
+        async signIn({ user, account }: { user: User; account: { provider?: string } | null }) {
           if (account?.provider === 'google') {
             const email = encodeURIComponent(user.email || "");
             const name = encodeURIComponent(user.name || "");
@@ -74,7 +78,7 @@ const handler = NextAuth({
           }
           return true;
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user }: { token: JWT; user?: User & { accessToken?: string } }) {
           // When the user signs in, `user` contains the object returned by `authorize`
           console.log('The user token is ', token, '\n The user is: ', user);
           if (user && 'accessToken' in user) {
@@ -87,7 +91,7 @@ const handler = NextAuth({
           // Optionally, we could refresh here if needed by calling backend /refresh
           return token;
         },
-        async session({ session, token }) {
+        async session({ session, token }: { session: Session; token: JWT }) {
           // Make the accessToken available in the session object
           if (token.accessToken) {
             session.accessToken = token.accessToken;
@@ -102,7 +106,7 @@ const handler = NextAuth({
           console.log("The session object is: ", session);
           return session;
         },
-      async redirect({ url, baseUrl }) {
+      async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
           // If the user is signing in/up, you can redirect them to a specific page
           // For example, redirect all users to '/dashboard' after successful login/signup
           if (url.startsWith(baseUrl)) {
@@ -115,8 +119,9 @@ const handler = NextAuth({
           return baseUrl;
         },
     },
-    
-})
+} as const;
+
+const handler = NextAuth(authOptions);
 
 console.log("The google client id is : ", process.env.GOOGLE_CLIENT_ID);
 console.log("The google client secret is : ", process.env.GOOGLE_CLIENT_SECRET);
