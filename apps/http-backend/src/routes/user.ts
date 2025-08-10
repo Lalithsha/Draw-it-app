@@ -359,6 +359,29 @@ userRouter.get("/chats/:roomId", async (req,res)=>{
     }
 })
 
+// Create chat (used for solo/draft saving without websockets)
+userRouter.post("/chats", authMiddleware, async (req:Request, res:Response) => {
+    try {
+        const { roomId, message } = req.body as { roomId?: number | string; message?: string };
+        const userId = req.userId;
+        const numericRoomId = Number(roomId);
+        if (!Number.isFinite(numericRoomId) || !message || typeof message !== 'string') {
+            res.status(400).json({ message: "Invalid roomId or message" });
+            return;
+        }
+        const chat = await prismaClient.chat.create({
+            data: {
+                roomId: numericRoomId,
+                message,
+                userId: userId,
+            }
+        });
+        res.json({ message: "saved", chat });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to save chat" });
+    }
+});
+
 
 userRouter.get("/room/:slug", async(req,res)=>{
 
