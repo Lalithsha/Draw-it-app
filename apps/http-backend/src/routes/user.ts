@@ -363,6 +363,8 @@ userRouter.get("/chats/:roomId", async (req,res)=>{
 userRouter.post("/chats", authMiddleware, async (req:Request, res:Response) => {
     try {
         const { roomId, message } = req.body as { roomId?: number | string; message?: string };
+        console.log("Room id is: ", roomId)
+        console.log("Message is: ", message)
         const userId = req.userId;
         const numericRoomId = Number(roomId);
         if (!Number.isFinite(numericRoomId) || !message || typeof message !== 'string') {
