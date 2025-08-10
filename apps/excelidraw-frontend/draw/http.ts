@@ -14,3 +14,10 @@ export async function getExistingShapes(roomId:string){
     
     return shapes;
 }
+
+export async function postShape(roomId: string, message: string) {
+    await api.post(`${HTTP_BACKEND}/chats`, {
+        roomId: Number(roomId),
+        message
+    });
+}

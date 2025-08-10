@@ -5,11 +5,24 @@ import { WS_URL } from "../../../config";
 import { Canvas } from "./Canvas";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Button } from "@repo/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@repo/ui/components/dialog";
+import { Input } from "@repo/ui/components/input";
+import { HTTP_BACKEND } from "../../../config";
+import { api } from "../lib/api";
 
 export function RoomCanvas({ roomId }: { roomId: string }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareLink, setShareLink] = useState("");
   useEffect(() => {
     // const ws = new WebSocket(WS_URL);
     // `${WS_URL}?token=eyJhbGciOiJIUzI1NiJ9.ZTQ3NjYzNDgtMDI0Yi00OTgyLTk4ZWItZmVjMDE2ZDYyMDhi.XexxVK_5VNU_qdBWRBrM6B6_xYMsv5aCTKsCnzh9KlY`
@@ -59,6 +72,75 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
   return (
     <div style={{ height: "100vh", overflow: "hidden" }}>
       <Canvas roomId={roomId} socket={socket} />
+      <div className="absolute top-2 right-4 z-10">
+        <Button
+          className="bg-excali-purple hover:bg-purple-700"
+          onClick={() => {
+            setShareLink("");
+            setShareOpen(true);
+          }}
+        >
+          Share
+        </Button>
+      </div>
+
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Live collaboration</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm text-gray-500 mb-1">Your name</div>
+              <Input readOnly value={session?.user?.name ?? "Anonymous"} />
+            </div>
+            <div>
+              <div className="text-sm text-gray-500 mb-1">Link</div>
+              <div className="flex gap-2">
+                <Input readOnly value={shareLink} placeholder="Generating..." />
+                <Button
+                  onClick={() => {
+                    if (shareLink) navigator.clipboard.writeText(shareLink);
+                  }}
+                >
+                  Copy link
+                </Button>
+              </div>
+            </div>
+            <div className="pt-2 flex gap-2">
+              <Button
+                className="bg-excali-purple hover:bg-purple-700"
+                onClick={async () => {
+                  try {
+                    const slug = `room-${Math.random().toString(36).slice(2, 8)}`;
+                    const res = await api.post(`${HTTP_BACKEND}/room`, {
+                      name: slug,
+                    });
+                    const createdRoomId: number = res.data.roomId;
+                    const origin =
+                      typeof window !== "undefined"
+                        ? window.location.origin
+                        : "";
+                    const link = `${origin}/canvas/${createdRoomId}`;
+                    setShareLink(link);
+                    // Navigate to new collaborative room
+                    router.push(`/canvas/${createdRoomId}`);
+                  } catch (e) {
+                    console.error("Failed to start session", e);
+                  }
+                }}
+              >
+                Start session
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShareOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* <canvas
         ref={canvasRef}

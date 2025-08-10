@@ -16,7 +16,7 @@ export function Canvas({
   socket,
 }: {
   roomId: string;
-  socket: WebSocket;
+  socket: WebSocket | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
@@ -31,7 +31,7 @@ export function Canvas({
 
   useEffect(() => {
     if (canvasRef.current) {
-      const g = new Game(canvasRef.current, roomId, socket);
+      const g = new Game(canvasRef.current, roomId, socket ?? null);
       setGame(g);
 
       return () => {

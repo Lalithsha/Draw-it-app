@@ -65,17 +65,11 @@ const NavBar = () => {
             Testimonials
           </a>
           {session ? (
-            <Button
-              className="bg-excali-purple hover:bg-purple-700 text-white ml-4"
-              onClick={handleLogout}
-            >
+            <Button className="ml-4 cursor-pointer" onClick={handleLogout}>
               Logout
             </Button>
           ) : (
-            <Button
-              className="bg-excali-purple hover:bg-purple-700 text-white ml-4"
-              onClick={handleLogin}
-            >
+            <Button className="ml-4 cursor-pointer" onClick={handleLogin}>
               Login
             </Button>
           )}

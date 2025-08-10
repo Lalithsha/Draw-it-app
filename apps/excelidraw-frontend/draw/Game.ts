@@ -1,5 +1,5 @@
 import { Tool } from "../types/canvas";
-import { getExistingShapes } from "./http";
+import { getExistingShapes, postShape } from "./http";
 import { SelectionController } from "./SelectionController";
 import { Shape } from "../types/canvas";
 import { v4 as uuidv4 } from 'uuid';
@@ -28,11 +28,11 @@ export class Game {
 
     private selectedTool:Tool|null = null;
     
-    socket: WebSocket;
+    socket: WebSocket | null;
     
     private selectionController: SelectionController;
     
-    constructor(canvas: HTMLCanvasElement, roomId:string, socket: WebSocket){
+    constructor(canvas: HTMLCanvasElement, roomId:string, socket: WebSocket | null){
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
         this.existingShape = [];
@@ -59,6 +59,7 @@ export class Game {
     }
     
     initHandlers(){
+        if (!this.socket) return;
         this.socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
             
@@ -232,11 +233,12 @@ export class Game {
 
         if (shape) {
             this.existingShape.push(shape);
-            this.socket.send(JSON.stringify({
-                type: "chat",
-                message: JSON.stringify({ shape }),
-                roomId: this.roomId
-            }));
+            const payload = JSON.stringify({ shape });
+            if (this.socket) {
+                this.socket.send(JSON.stringify({ type: "chat", message: payload, roomId: this.roomId }));
+            } else {
+                postShape(this.roomId, payload);
+            }
         }
         this.render();
     }
@@ -292,11 +294,12 @@ export class Game {
                 endY: worldY
             };
             this.existingShape.push(pencilSegment);
-            this.socket.send(JSON.stringify({
-                type: "chat",
-                message: JSON.stringify({ shape: pencilSegment }),
-                roomId: this.roomId
-            }));
+            const payload = JSON.stringify({ shape: pencilSegment });
+            if (this.socket) {
+                this.socket.send(JSON.stringify({ type: "chat", message: payload, roomId: this.roomId }));
+            } else {
+                postShape(this.roomId, payload);
+            }
             this.startX = worldX;
             this.startY = worldY;
         }
@@ -446,11 +449,12 @@ export class Game {
     }
 
  sendShapeUpdate(shape: Shape) {
-        this.socket.send(JSON.stringify({
-            type: "chat",
-            message: JSON.stringify({ shape }),
-            roomId: this.roomId
-        }));
+        const payload = JSON.stringify({ shape });
+        if (this.socket) {
+            this.socket.send(JSON.stringify({ type: "chat", message: payload, roomId: this.roomId }));
+        } else {
+            postShape(this.roomId, payload);
+        }
     }
 
 

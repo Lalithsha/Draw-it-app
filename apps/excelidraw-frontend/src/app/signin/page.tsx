@@ -16,7 +16,7 @@ export default function Signin() {
       redirect: false, // Handle redirect manually
       username: email,
       password,
-      callbackUrl: "/canvas/1", // Redirect here on success
+      callbackUrl: "/", // Redirect here on success
     });
 
     if (result?.error) {
@@ -25,7 +25,7 @@ export default function Signin() {
     } else {
       console.log("Sign-in successful:", result);
       // Redirect or update UI
-      window.location.href = "/dashboard"; // Manual redirect if needed
+      window.location.href = "/"; // Manual redirect to home canvas
     }
   };
 
