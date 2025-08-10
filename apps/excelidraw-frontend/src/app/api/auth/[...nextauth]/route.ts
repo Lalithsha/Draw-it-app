@@ -74,7 +74,7 @@ export const authOptions: NextAuthOptions = {
             const email = encodeURIComponent(user.email || "");
             const name = encodeURIComponent(user.name || "");
             // Redirect to client bridge page so cookies are set in the browser context
-            return `/auth/bridge?email=${email}&name=${name}&redirect=${encodeURIComponent("/canvas/1")}`;
+            return `/auth/bridge?email=${email}&name=${name}&redirect=${encodeURIComponent("/")}`;
           }
           return true;
         },
@@ -107,13 +107,10 @@ export const authOptions: NextAuthOptions = {
           return session;
         },
       async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-          // If the user is signing in/up, you can redirect them to a specific page
-          // For example, redirect all users to '/dashboard' after successful login/signup
+          // Land on home canvas by default after auth
           if (url.startsWith(baseUrl)) {
-            return `${baseUrl}/canvas/1`; // Replace '/dashboard' with your desired page
+            return `${baseUrl}/`;
           }
-          // return '/canvas/1'; // Redirect to the canvas page after sign-in
-          // Default behavior: allow relative URLs or URLs on the same origin
           if (url.startsWith("/")) return `${baseUrl}${url}`;
           else if (new URL(url).origin === baseUrl) return url;
           return baseUrl;
