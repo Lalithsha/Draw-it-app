@@ -34,20 +34,19 @@ const MAX_RETRIES = 3; // Maximum number of times to resend a message
 
 function checkUser(token: string): string | null {
   try {
-    // const decoded = jwt.verify(token, "lal32i") as JwtPayload;
-    const decoded = jwt.verify(token, "lal32i");
-    console.log("Decoded token: ", decoded);
-    console.log(typeof decoded);
-    // if (typeof decoded === "string") {
-    //   return null;
-    // }
-
-    // if (!decoded || !decoded.userId) {
-    //   return null;
-    // }
-    console.log("Decoded userId: ", decoded)
-    return decoded as string;
-  } catch(e) {
+    const secret = (process.env.JWT_SECRET || "lal32i") as string;
+    const decoded = jwt.verify(token, secret) as unknown as {
+      id?: string | number;
+      type?: string;
+      iat?: number;
+      exp?: number;
+    };
+    if (!decoded || decoded.type !== "access" || decoded.id == null) {
+      return null;
+    }
+    return String(decoded.id);
+  } catch (e) {
+    console.error("Failed to verify JWT in ws-backend:", e);
     return null;
   }
 }
@@ -196,11 +195,16 @@ wss.on('connection', function connection(ws, request) {
           return;
         }
         
+        const numericRoomId = Number(roomId);
+        if (!Number.isFinite(numericRoomId)) {
+          console.error("Invalid roomId for chat:", roomId);
+          return;
+        }
         await prismaClient.chat.create({
           data:{
-            roomId: Number(roomId),
+            roomId: numericRoomId,
             message,
-            userId
+            userId: String(userId)
           }
         })
 
