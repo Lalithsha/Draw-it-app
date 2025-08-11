@@ -3,17 +3,15 @@
 import { useEffect, useState } from "react";
 import { WS_URL } from "../../../config";
 import { Canvas } from "./Canvas";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@repo/ui/components/button";
+import { CanvasShareModal } from "@repo/ui/components/canvas-share-modal";
+import { ThemeToggleButton } from "@repo/ui/components/theme-toggle";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@repo/ui/components/dialog";
-import { Input } from "@repo/ui/components/input";
+  CanvasSidebar,
+  CanvasSidebarTrigger,
+} from "@repo/ui/components/canvas-sidebar";
 import { HTTP_BACKEND } from "../../../config";
 import { api } from "../lib/api";
 
@@ -23,11 +21,15 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [shareLink, setShareLink] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   useEffect(() => {
-    // const ws = new WebSocket(WS_URL);
-    // `${WS_URL}?token=eyJhbGciOiJIUzI1NiJ9.ZTQ3NjYzNDgtMDI0Yi00OTgyLTk4ZWItZmVjMDE2ZDYyMDhi.XexxVK_5VNU_qdBWRBrM6B6_xYMsv5aCTKsCnzh9KlY`
+    // Solo-first: only connect WS if this looks like a numeric room id (collab)
+    const isCollabRoom = /^\d+$/.test(roomId);
+    if (!isCollabRoom) {
+      setSocket(null);
+      return;
+    }
     if (!session || !session?.accessToken) {
-      console.log("Waiting for session and token...");
       setSocket(null);
       return;
     }
@@ -41,7 +43,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
         })
       );
     };
-  }, [session?.accessToken, roomId]);
+  }, [session?.accessToken, session, roomId]);
 
   if (!session) {
     return (
@@ -65,16 +67,47 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
     );
   }
 
-  if (!socket) {
-    return <div>Connecting to server</div>;
-  }
+  // When solo (no socket), still render Canvas which will use HTTP persistence
 
   return (
     <div style={{ height: "100vh", overflow: "hidden" }}>
-      <Canvas roomId={roomId} socket={socket} />
-      <div className="absolute top-2 right-4 z-10">
+      {/* Sidebar container renders over canvas */}
+      <CanvasSidebar
+        isOpen={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        onFind={() => {
+          // placeholder: could open a command palette in future
+          setSidebarOpen(false);
+        }}
+        onOpenShare={() => {
+          setSidebarOpen(false);
+          setShareOpen(true);
+        }}
+        isAuthenticated={!!session}
+        onSignIn={() => router.push("/signin")}
+        onSignOut={async () => {
+          await signOut({ callbackUrl: "/" });
+        }}
+      >
+        {/* Canvas sits beneath/with sidebar sibling */}
+        <div className="w-full h-full">
+          {/* Menu trigger top-left */}
+          <div className="fixed top-3 left-3 z-50">
+            <CanvasSidebarTrigger onClick={() => setSidebarOpen(true)} />
+          </div>
+          {/* Canvas */}
+          <Canvas roomId={roomId} socket={socket} />
+        </div>
+      </CanvasSidebar>
+
+      {/* Single trigger provided inside CanvasSidebar; avoid duplicate overlapping triggers */}
+
+      {/* Share and theme toggle top-right */}
+      <div className="fixed top-3 right-4 z-50 flex items-center gap-2">
+        <ThemeToggleButton />
         <Button
-          className="bg-excali-purple hover:bg-purple-700"
+          className="bg-white text-black border shadow dark:bg-black dark:text-white"
+          variant="outline"
           onClick={() => {
             setShareLink("");
             setShareOpen(true);
@@ -83,64 +116,33 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
           Share
         </Button>
       </div>
-
-      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Live collaboration</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-gray-500 mb-1">Your name</div>
-              <Input readOnly value={session?.user?.name ?? "Anonymous"} />
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 mb-1">Link</div>
-              <div className="flex gap-2">
-                <Input readOnly value={shareLink} placeholder="Generating..." />
-                <Button
-                  onClick={() => {
-                    if (shareLink) navigator.clipboard.writeText(shareLink);
-                  }}
-                >
-                  Copy link
-                </Button>
-              </div>
-            </div>
-            <div className="pt-2 flex gap-2">
-              <Button
-                className="bg-excali-purple hover:bg-purple-700"
-                onClick={async () => {
-                  try {
-                    const slug = `room-${Math.random().toString(36).slice(2, 8)}`;
-                    const res = await api.post(`${HTTP_BACKEND}/room`, {
-                      name: slug,
-                    });
-                    const createdRoomId: number = res.data.roomId;
-                    const origin =
-                      typeof window !== "undefined"
-                        ? window.location.origin
-                        : "";
-                    const link = `${origin}/canvas/${createdRoomId}`;
-                    setShareLink(link);
-                    // Navigate to new collaborative room
-                    router.push(`/canvas/${createdRoomId}`);
-                  } catch (e) {
-                    console.error("Failed to start session", e);
-                  }
-                }}
-              >
-                Start session
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setShareOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CanvasShareModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        userName={session?.user?.name ?? "Anonymous"}
+        shareLink={shareLink}
+        onCopy={() => shareLink && navigator.clipboard.writeText(shareLink)}
+        onStartSession={async () => {
+          try {
+            const origin =
+              typeof window !== "undefined" ? window.location.origin : "";
+            if (/^\d+$/.test(roomId)) {
+              const link = `${origin}/canvas/${roomId}`;
+              setShareLink(link);
+              return;
+            }
+            const res = await api.post(`${HTTP_BACKEND}/room`, {
+              name: `room-${Math.random().toString(36).slice(2, 8)}`,
+            });
+            const createdRoomId: number = res.data.roomId;
+            const link = `${origin}/canvas/${createdRoomId}`;
+            setShareLink(link);
+            router.push(`/canvas/${createdRoomId}`);
+          } catch (e) {
+            console.error("Failed to start session", e);
+          }
+        }}
+      />
 
       {/* <canvas
         ref={canvasRef}

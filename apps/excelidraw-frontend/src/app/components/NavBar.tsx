@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { api } from "@/app/lib/api";
 import { useRouter } from "next/navigation";
+import { ThemeToggleButton } from "@repo/ui/components/theme-toggle";
 
 const NavBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -36,10 +37,10 @@ const NavBar = () => {
   };
 
   return (
-    <nav className="py-4 w-full sticky top-0 bg-white/80 backdrop-blur-md z-50">
+    <nav className="py-4 w-full sticky top-0 bg-white/80 dark:bg-black/60 backdrop-blur-md z-50">
       <div className="container mx-auto px-4 flex justify-between items-center">
         <div className="flex items-center">
-          <span className="text-2xl font-bold text-excali-purple font-handwritten">
+          <span className="text-2xl font-bold text-excali-purple font-handwritten dark:text-white">
             Draw-It-Out
           </span>
         </div>
@@ -48,22 +49,23 @@ const NavBar = () => {
         <div className="hidden md:flex items-center space-x-8">
           <a
             href="#features"
-            className="text-gray-600 hover:text-excali-purple transition duration-200"
+            className="text-gray-600 dark:text-gray-300 hover:text-excali-purple transition duration-200"
           >
             Features
           </a>
           <a
             href="#how-it-works"
-            className="text-gray-600 hover:text-excali-purple transition duration-200"
+            className="text-gray-600 dark:text-gray-300 hover:text-excali-purple transition duration-200"
           >
             How it Works
           </a>
           <a
             href="#testimonials"
-            className="text-gray-600 hover:text-excali-purple transition duration-200"
+            className="text-gray-600 dark:text-gray-300 hover:text-excali-purple transition duration-200"
           >
             Testimonials
           </a>
+          <ThemeToggleButton />
           {session ? (
             <Button className="ml-4 cursor-pointer" onClick={handleLogout}>
               Logout
@@ -88,29 +90,30 @@ const NavBar = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white shadow-lg absolute top-full left-0 right-0 z-50">
+        <div className="md:hidden bg-white dark:bg-gray-900 shadow-lg absolute top-full left-0 right-0 z-50">
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
             <a
               href="#features"
-              className="text-gray-600 hover:text-excali-purple py-2 transition duration-200"
+              className="text-gray-600 dark:text-gray-300 hover:text-excali-purple py-2 transition duration-200"
               onClick={() => setIsMenuOpen(false)}
             >
               Features
             </a>
             <a
               href="#how-it-works"
-              className="text-gray-600 hover:text-excali-purple py-2 transition duration-200"
+              className="text-gray-600 dark:text-gray-300 hover:text-excali-purple py-2 transition duration-200"
               onClick={() => setIsMenuOpen(false)}
             >
               How it Works
             </a>
             <a
               href="#testimonials"
-              className="text-gray-600 hover:text-excali-purple py-2 transition duration-200"
+              className="text-gray-600 dark:text-gray-300 hover:text-excali-purple py-2 transition duration-200"
               onClick={() => setIsMenuOpen(false)}
             >
               Testimonials
             </a>
+            <ThemeToggleButton />
             {session ? (
               <Button
                 className="bg-excali-purple hover:bg-purple-700 text-white w-full"

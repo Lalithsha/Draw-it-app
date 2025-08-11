@@ -40,6 +40,18 @@ export function Canvas({
     }
   }, [roomId, socket]);
 
+  // Ensure canvas resizes with window
+  useEffect(() => {
+    const onResize = () => {
+      if (!canvasRef.current) return;
+      canvasRef.current.width = window.innerWidth;
+      canvasRef.current.height = window.innerHeight;
+      game?.render();
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [game]);
+
   return (
     <div className="relative w-full h-full">
       <canvas

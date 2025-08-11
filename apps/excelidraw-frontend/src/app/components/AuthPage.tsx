@@ -1,8 +1,7 @@
 import Input from "@repo/ui/components/Input2";
-import { TurbopackRuleConfigItemOptions } from "next/dist/server/config-shared";
 import Link from "next/link";
-import { signIn, signOut } from "next-auth/react";
-import Signup from "../signup/page";
+import { signIn } from "next-auth/react";
+import { ThemeToggleButton } from "@repo/ui/components/theme-toggle";
 
 interface BaseAuthProps {
   email: string;
@@ -24,7 +23,10 @@ interface SignUpProps extends BaseAuthProps {
   setName: (name: string) => void;
 }
 
-export type AuthProps = SignInProps | SignUpProps;
+export type AuthProps = (SignInProps | SignUpProps) & {
+  error?: string;
+  loading?: boolean;
+};
 
 export function AuthPage(props: AuthProps) {
   const {
@@ -36,25 +38,35 @@ export function AuthPage(props: AuthProps) {
     password,
     setPassword,
     onSubmit,
+    error,
+    loading,
   } = props;
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg">
-        <h2 className="text-3xl font-bold text-center text-gray-800">
+    <div className="relative flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggleButton />
+      </div>
+      <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-900 rounded-xl shadow-lg">
+        <h2 className="text-3xl font-bold text-center text-gray-800 dark:text-gray-100">
           {isSignIn ? "Welcome Back!" : "Create Account"}
         </h2>
-        <p className="text-center text-gray-600">
+        <p className="text-center text-gray-600 dark:text-gray-300">
           {isSignIn
             ? "Sign in to continue drawing."
             : "Sign up to start your creative journey."}
         </p>
+        {error && (
+          <div className="rounded-md border border-red-300 bg-red-50 text-red-700 p-3 text-sm">
+            {error}
+          </div>
+        )}
         <form onSubmit={onSubmit} className="space-y-4">
           {!isSignIn && (
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
                 Name
               </label>
@@ -65,7 +77,7 @@ export function AuthPage(props: AuthProps) {
                 autoComplete="name"
                 required={!isSignIn}
                 placeholder="Your Name"
-                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out dark:bg-gray-800 dark:text-gray-100"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -74,7 +86,7 @@ export function AuthPage(props: AuthProps) {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Email address
             </label>
@@ -85,7 +97,7 @@ export function AuthPage(props: AuthProps) {
               autoComplete="email"
               required
               placeholder="you@example.com"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out dark:bg-gray-800 dark:text-gray-100"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -93,7 +105,7 @@ export function AuthPage(props: AuthProps) {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               Password
             </label>
@@ -104,7 +116,7 @@ export function AuthPage(props: AuthProps) {
               autoComplete={isSignIn ? "current-password" : "new-password"}
               required
               placeholder="••••••••"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out dark:bg-gray-800 dark:text-gray-100"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -112,9 +124,10 @@ export function AuthPage(props: AuthProps) {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out"
+              disabled={!!loading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:opacity-60"
             >
-              {isSignIn ? "Sign In" : "Sign Up"}
+              {loading ? "Please wait..." : isSignIn ? "Sign In" : "Sign Up"}
             </button>
           </div>
           {isSignIn ? (
@@ -126,18 +139,17 @@ export function AuthPage(props: AuthProps) {
             </div>
           ) : (
             <div
-              className=" text-sm text-center text-gray-600 hover:text-indigo-500 cursor-pointer 
-            "
-              onClick={() => Signup()}
+              className=" text-sm text-center text-gray-600 dark:text-gray-300 hover:text-indigo-500 cursor-pointer"
+              onClick={() => signIn("google")}
             >
               Sign up with google
             </div>
           )}
         </form>
-        <div className="text-sm text-center text-gray-600">
+        <div className="text-sm text-center text-gray-600 dark:text-gray-300">
           {isSignIn ? (
             <>
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/signup"
                 className="font-medium text-indigo-600 hover:text-indigo-500"

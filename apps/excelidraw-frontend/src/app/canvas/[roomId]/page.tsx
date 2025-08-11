@@ -12,7 +12,7 @@ export default async function CanvasPage({
   if (!session) {
     redirect("/signin");
   }
-  const roomId = (await params).roomId;
+  const roomId = (await params).roomId; // can be numeric room or solo document id
   console.log("Room Id is : ", roomId);
 
   return <RoomCanvas roomId={roomId} />;
