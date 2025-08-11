@@ -79,31 +79,32 @@ export const authOptions: NextAuthOptions = {
           return true;
         },
         async jwt({ token, user }: { token: JWT; user?: User & { accessToken?: string } }) {
-          // When the user signs in, `user` contains the object returned by `authorize`
-          console.log('The user token is ', token, '\n The user is: ', user);
-          if (user && 'accessToken' in user) {
-            console.log("The user object is: ", user);
-            token.accessToken = (user as { accessToken: string }).accessToken;
-            token.id = (user as { id?: string }).id;
-            token.email = (user as { email?: string }).email;
-            token.name = (user as { name?: string }).name;
+          // On any sign-in, merge known fields from the provider/user into the token.
+          // This covers both Credentials and Google providers.
+          if (user) {
+            const u = user as Partial<User> & { accessToken?: string; id?: string };
+            if (u.accessToken) token.accessToken = u.accessToken;
+            if (u.id) token.id = u.id;
+            if (u.email) token.email = u.email;
+            if (u.name) token.name = u.name;
           }
-          // Optionally, we could refresh here if needed by calling backend /refresh
           return token;
         },
         async session({ session, token }: { session: Session; token: JWT }) {
-          // Make the accessToken available in the session object
           if (token.accessToken) {
             session.accessToken = token.accessToken;
           }
-          const jwtToken = token as unknown as { id?: string; email?: string; name?: string; accessToken?: string };
+          const jwtToken = token as Partial<JWT> & {
+            id?: string;
+            email?: string;
+            name?: string;
+          };
           session.user = {
             ...session.user,
-            id: jwtToken.id,
-            email: jwtToken.email,
-            name: jwtToken.name,
+            id: jwtToken.id ?? session.user?.id,
+            email: jwtToken.email ?? session.user?.email,
+            name: jwtToken.name ?? session.user?.name,
           };
-          console.log("The session object is: ", session);
           return session;
         },
       async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
