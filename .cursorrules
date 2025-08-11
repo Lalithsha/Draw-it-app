@@ -1,0 +1,94 @@
+# Cursor Rules for Draw-it-app Monorepo
+
+These rules guide AI-assisted changes in this repository. They encode our monorepo structure, code style, file placement, and safe-change policies.
+
+## Monorepo layout
+- Root package manager: pnpm (v9). Node >= 18.
+- Workspaces: `apps/*`, `packages/*`.
+- Task runner: Turborepo (`turbo.json`).
+
+## Apps and packages
+- Apps:
+  - `apps/excelidraw-frontend`: Next.js 15. Main frontend app. Use port 3001 in dev if another app is running on 3000.
+  - `apps/http-backend`: Express HTTP API (TypeScript build to `dist`).
+  - `apps/ws-backend`: WebSocket/Express server (TypeScript build to `dist`).
+  - `apps/web`: (reserved/absolute path, not used in this project)
+- Packages:
+  - `packages/ui`: Shared React UI components and primitives.
+  - `packages/common`: Shared TypeScript types/utilities.
+  - `packages/backend-common`: Backend-only shared utilities/types.
+  - `packages/db`: Prisma schema and `@prisma/client` setup; exports `@repo/db/client`.
+
+## File placement rules
+- New shared UI components must go in `packages/ui/src/components/` and be exported from that package. Prefer colocated component folders when complex (component + subparts + styles + stories/tests).
+- App-specific components (only used by a single app) live under that app, e.g., `apps/excelidraw-frontend/src/app/components/`.
+- Shared types/utilities:
+  - Frontend+backend shared: `packages/common/src` (export via package entrypoint).
+  - Backend-only shared: `packages/backend-common`.
+- Database access and Prisma Client usage must import from `@repo/db/client` rather than generating Prisma clients in other packages.
+- Do not import app code from packages or between apps. Only apps depend on packages, not vice versa.
+
+## Tech and style
+- Language: TypeScript. Prefer explicit function signatures for exported APIs; avoid `any`/unsafe casts.
+- Linting/formatting:
+  - Run `pnpm -w lint` for lint checks (delegates to individual packages/apps). Max warnings should be treated as errors where configured.
+  - Run `pnpm -w format` to apply Prettier across `**/*.{ts,tsx,md}`.
+- Code style:
+  - Prefer meaningful, descriptive names; avoid 1–2 character identifiers.
+  - Use early returns and shallow nesting. Handle errors/edge-cases first.
+  - Keep comments concise and focused on the “why”, not the “how”.
+
+## Commands
+- Install: `pnpm i -w`.
+- Dev (all): `pnpm dev` at repo root (Turborepo). Dev tasks are persistent and uncached.
+  - Single app: `pnpm --filter excelidraw-frontend dev`.
+  - If both Next apps run together, change one port (e.g., run excelidraw-frontend on 3001).
+- Build: `pnpm build` at root or `pnpm --filter <pkg> build`.
+- Lint: `pnpm lint` (root or filtered).
+- Typecheck: `pnpm check-types` (root or filtered).
+- Backend dev:
+  - HTTP: `pnpm --filter http-backend dev` (build then `node dist/index.js`).
+  - WS: `pnpm --filter ws-backend dev`.
+- Prisma (in `packages/db`): ensure `DATABASE_URL` set, then `pnpm --filter @repo/db exec prisma generate` (migrations are managed within this package).
+
+## Environment
+- Primary env var file: root `.env`. The root `package.json` exports it via "./env".
+- Required: `DATABASE_URL` for Prisma datasource. Do not hardcode secrets; use environment variables.
+- Frontend runtime config should use Next.js env conventions (`NEXT_PUBLIC_*` for browser).
+
+## Next.js conventions
+- Use the App Router conventions (existing apps follow `app/` directory). Place route components and server actions accordingly.
+- Avoid server-only APIs in client components. Encapsulate API calls in `apps/excelidraw-frontend/src/app/lib` or dedicated service modules.
+- Prefer `@repo/ui` for shared UI primitives. Only add UI directly in an app when it is app-specific.
+
+## Backend conventions
+- Validate external input with Zod schemas.
+- Keep route handlers thin; move logic into small, testable service functions.
+- Reuse shared auth/types from `packages/common` or `packages/backend-common` where appropriate.
+
+## Database conventions
+- One Prisma schema in `packages/db/prisma/schema.prisma`.
+- Access DB only via `@repo/db/client`. Do not instantiate `PrismaClient` elsewhere.
+- Keep migrations within `packages/db/prisma/migrations/` and generate client after schema changes.
+
+## Testing and safety
+- Before marking a change complete, ensure:
+  - `pnpm build` succeeds for affected packages.
+  - Lint and type checks pass (`pnpm lint`, `pnpm check-types`).
+- For risky changes (auth, DB, critical UI), prefer incremental edits and keep diffs focused.
+
+## Commits and PRs
+- Use Conventional Commits where possible: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`.
+- Keep PRs scoped to one logical change; include instructions to run affected packages if non-obvious.
+
+## AI guardrails
+- Do not move files across packages/apps unless explicitly requested or clearly beneficial with justification.
+- Do not change public exports or package names without coordinating updates to dependents.
+- Do not introduce new top-level packages without prior agreement.
+- Respect workspace constraints and avoid adding dependencies to the wrong scope. Prefer adding deps to the specific app/package; only add to root if truly root-level.
+- For UI work, prefer placing new reusable components in `packages/ui` and exporting them for reuse across apps.
+
+## Ignore and non-goals for AI
+- Never commit or print secrets from `.env`.
+- Ignore generated/build output: `node_modules`, `.next`, `dist`, `.turbo`, `*.tsbuildinfo`.
+- Do not reformat unrelated files in large edits.
