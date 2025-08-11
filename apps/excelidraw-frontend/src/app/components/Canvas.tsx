@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import IconButton from "@repo/ui/components/IconButton";
 import {
   Circle,
@@ -21,6 +22,7 @@ export function Canvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (game) {
@@ -39,6 +41,23 @@ export function Canvas({
       };
     }
   }, [roomId, socket]);
+
+  // Apply theme colors to the canvas renderer
+  useEffect(() => {
+    if (!game) return;
+    const isDark = theme === "dark";
+    const isLight = theme === "light";
+    // Default to system dark if unspecified; the Providers set class on html
+    const useDark =
+      isDark ||
+      (!isLight &&
+        typeof window !== "undefined" &&
+        document.documentElement.classList.contains("dark"));
+    game.setRenderColors({
+      backgroundColor: useDark ? "rgba(0,0,0)" : "rgba(255,255,255)",
+      strokeColor: useDark ? "rgba(255,255,255)" : "rgba(0,0,0)",
+    });
+  }, [game, theme]);
 
   // Ensure canvas resizes with window
   useEffect(() => {
@@ -75,7 +94,7 @@ function TopBar({
   setSelectedTool: (s: Tool | null) => void;
 }) {
   return (
-    <div className="mt-2 flex border border-gray-400 rounded-md shadow-md bg-black/30 pointer-events-auto cursor-pointer ">
+    <div className="mt-2 flex rounded-md shadow-md pointer-events-auto cursor-pointer border border-gray-400 bg-black/30 dark:bg-black/30 bg-opacity-30 backdrop-blur-sm">
       <IconButton
         activated={selectedTool === Tool.Selection}
         icon={<MousePointer />}

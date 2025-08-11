@@ -27,6 +27,10 @@ export class Game {
     }
 
     private selectedTool:Tool|null = null;
+
+    // Theme-aware render colors
+    private backgroundColor: string = "rgba(0, 0, 0)";
+    private strokeColor: string = "rgba(255, 255, 255)";
     
     socket: WebSocket | null;
     
@@ -57,6 +61,13 @@ export class Game {
         this.selectedTool = tool;
         console.log("set tool as ", this.selectedTool)
     }
+
+    /** Configure colors for light/dark theme */
+    setRenderColors(colors: { backgroundColor: string; strokeColor: string }) {
+        this.backgroundColor = colors.backgroundColor;
+        this.strokeColor = colors.strokeColor;
+        this.render();
+    }
     
     initHandlers(){
         if (!this.socket) return;
@@ -70,7 +81,7 @@ export class Game {
                 
                 // Send acknowledgment if messageId exists
                 if (message.messageId) {
-                    this.socket.send(JSON.stringify({
+                    this.socket?.send(JSON.stringify({
                         type: "ack",
                         messageId: message.messageId
                     }));
@@ -86,24 +97,24 @@ export class Game {
         }
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.fillStyle = "rgba(0, 0, 0)";
+        this.ctx.fillStyle = this.backgroundColor;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
         this.existingShape.map((shape)=>{
             if(shape.type===Tool.Rectangle){
-                this.ctx.strokeStyle = "rgba(255, 255, 255)";
+                this.ctx.strokeStyle = this.strokeColor;
                 this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
             }
             else if(shape.type === Tool.Circle){
                 this.ctx.beginPath();
-                this.ctx.strokeStyle = "rgba(255, 255, 255)";
+                this.ctx.strokeStyle = this.strokeColor;
                 this.ctx.arc(shape.centerX, shape.centerY, shape.radius, 0, Math.PI * 2);
                 this.ctx.stroke(); // Added stroke for circle outline
                 this.ctx.closePath();
             }
             else if(shape.type === Tool.Line){
                 this.ctx.beginPath();
-                this.ctx.strokeStyle = "rgba(255, 255, 255)";
+                this.ctx.strokeStyle = this.strokeColor;
                 this.ctx.moveTo(shape.startX, shape.startY); 
                 this.ctx.lineTo(shape.endX, shape.endY); // Example line length
                 // this.ctx.lineTo(shape.centerX, shape.y); // Example line length
@@ -111,7 +122,7 @@ export class Game {
             }
             else if(shape.type === Tool.Pencil){
                 this.ctx.beginPath();
-                this.ctx.strokeStyle = "rgba(255, 255, 255)";
+                this.ctx.strokeStyle = this.strokeColor;
                 this.ctx.lineCap = 'round'; // Good for smoother pencil strokes
                 this.ctx.lineJoin = 'round'; // Good for smoother pencil strokes
                 this.ctx.moveTo(shape.startX, shape.startY);
@@ -345,7 +356,7 @@ export class Game {
     render = () => {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.fillStyle = "rgba(0, 0, 0)";
+    this.ctx.fillStyle = this.backgroundColor;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.ctx.setTransform(
@@ -358,7 +369,7 @@ export class Game {
     );
 
     this.existingShape.forEach((shape) => {
-        this.ctx.strokeStyle = "rgba(255, 255, 255)";
+        this.ctx.strokeStyle = this.strokeColor;
         if (shape.type === Tool.Rectangle) {
             this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
         } else if (shape.type === Tool.Circle) {
