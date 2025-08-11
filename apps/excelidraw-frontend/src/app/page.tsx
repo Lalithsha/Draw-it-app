@@ -18,7 +18,6 @@ export default function Home() {
   const { data: session } = useSession();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [draftRoomId, setDraftRoomId] = useState<string | null>(null);
-  // Share modal state must be declared before any early returns to keep hook order stable
   const [shareOpen, setShareOpen] = useState(false);
   const [shareLink, setShareLink] = useState("");
 
@@ -49,7 +48,7 @@ export default function Home() {
     ensureDraft();
   }, [session?.user?.id]);
 
-  // For solo mode, skip WS entirely. We'll rely on HTTP persistence in Game when socket is null.
+  // Solo mode: skip WS
   useEffect(() => {
     setSocket(null);
   }, [draftRoomId]);
@@ -116,7 +115,9 @@ export default function Home() {
                 className="bg-excali-purple hover:bg-purple-700"
                 onClick={async () => {
                   try {
-                    const slug = `room-${Math.random().toString(36).slice(2, 8)}`;
+                    const slug = `room-${Math.random()
+                      .toString(36)
+                      .slice(2, 8)}`;
                     const res = await api.post(`${HTTP_BACKEND}/room`, {
                       name: slug,
                     });
@@ -127,7 +128,6 @@ export default function Home() {
                         : "";
                     const link = `${origin}/canvas/${createdRoomId}`;
                     setShareLink(link);
-                    // Navigate to new collaborative room
                     window.location.href = `/canvas/${createdRoomId}`;
                   } catch (e) {
                     console.error("Failed to start session", e);
