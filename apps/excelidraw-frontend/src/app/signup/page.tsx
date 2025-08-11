@@ -7,22 +7,27 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ email, password, name });
-
+    setError(null);
+    setLoading(true);
     try {
       const response = await axios.post(
         "http://localhost:3001/api/v1/user/signup",
         { username: email, password, name },
         { withCredentials: true }
       );
-      console.log("Sign-up successful:", response.data);
-      window.location.href = "/signin"; // Redirect to sign-in after success
-    } catch (error) {
-      console.error("Sign-up error:", error);
-      alert("Sign-up failed. Please try again.");
+      if (!response?.data) throw new Error("No response");
+      window.location.href = "/signin";
+    } catch (e: any) {
+      const message =
+        e?.response?.data?.message || "Sign-up failed. Please try again.";
+      setError(message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,6 +42,8 @@ export default function Signup() {
         password={password}
         setPassword={setPassword}
         onSubmit={onSubmit}
+        error={error ?? undefined}
+        loading={loading}
       />
     </div>
   );
