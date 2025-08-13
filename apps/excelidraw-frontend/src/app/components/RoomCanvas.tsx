@@ -23,12 +23,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
   const [shareLink, setShareLink] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   useEffect(() => {
-    // Solo-first: only connect WS if this looks like a numeric room id (collab)
-    const isCollabRoom = /^\d+$/.test(roomId);
-    if (!isCollabRoom) {
-      setSocket(null);
-      return;
-    }
+    // Collab rooms are now string IDs; connect if we have a session token
     if (!session || !session?.accessToken) {
       setSocket(null);
       return;
@@ -131,10 +126,8 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
               setShareLink(link);
               return;
             }
-            const res = await api.post(`${HTTP_BACKEND}/room`, {
-              name: `room-${Math.random().toString(36).slice(2, 8)}`,
-            });
-            const createdRoomId: number = res.data.roomId;
+            const res = await api.post(`${HTTP_BACKEND}/room`);
+            const createdRoomId: string = res.data.roomId;
             const link = `${origin}/canvas/${createdRoomId}`;
             setShareLink(link);
             router.push(`/canvas/${createdRoomId}`);

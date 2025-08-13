@@ -8,32 +8,38 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            String    @id @default(cuid())
   name          String
-  email         String         @unique
+  email         String    @unique
+  emailVerified DateTime?
   password      String
-  photo         String?
-  room          Room[]
-  chats         Chat[]
-  refreshTokens RefreshToken[]
+  image         String?
+  Room          Room[]
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  Shape        Shape[]
+  RefreshToken RefreshToken[]
 }
 
 model Room {
-  id        Int      @id @default(autoincrement())
-  slug      String   @unique
-  createdAt DateTime @default(now())
+  id        String   @id @default(cuid())
   adminId   String
   admin     User     @relation(fields: [adminId], references: [id])
-  chats     Chat[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Shape     Shape[]
 }
 
-model Chat {
-  id      Int    @id @default(autoincrement())
-  roomId  Int
-  message String // {type: 'rect', x: 1, y: 1, width:20, height:20 } // create shapes model
-  userId  String
-  room    Room   @relation(fields: [roomId], references: [id])
-  user    User   @relation(fields: [userId], references: [id])
+model Shape {
+  id        String   @id @default(uuid())
+  message   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  roomId    String
+  Room      Room     @relation(fields: [roomId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model RefreshToken {

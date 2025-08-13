@@ -1,6 +1,6 @@
 import { Response,Request, Router } from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
-import {CreateRoomSchema, CreateUserSchema, SigninSchema} from "@repo/common/types";
+import { CreateUserSchema, SigninSchema } from "@repo/common/types";
 import {prismaClient} from "@repo/db/client"
 import express from "express";
 import bcrypt from "bcryptjs";
@@ -305,107 +305,79 @@ userRouter.post("/oauth/bridge", async (req: Request, res: Response) => {
 
 
 
+// Create a new room with the authenticated user as admin (used for collab sessions)
 userRouter.post("/room", authMiddleware, async (req:Request,res:Response)=>{
-
-    const parsedData = CreateRoomSchema.safeParse(req.body);
-
-    if(!parsedData.success){
-        res.json({
-            message:"Incorrect inputs"
-        })
-        return;
-    }
-    const {name} = parsedData.data;
-    const userId = req.userId;
-    console.log("User id from room" , userId)
     try{
+        const userId = req.userId;
         const room = await prismaClient.room.create({
             data:{
-                slug:name,
-                adminId:userId
+                adminId: userId
             }
         })
-        res.json({
-            roomId:room.id
-        })
+        res.json({ roomId: room.id })
         return;
     } catch(error){
-        res.status(411).json({
-            message:`Room already exists with this name , ${error}`
+        res.status(500).json({
+            message:`Failed to create room`
         })
     }
 })
 
-userRouter.get("/chats/:roomId", async (req,res)=>{
-    const roomId  = Number(req.params.roomId);
+// Ensure a solo room for the current admin (returns the latest or creates one)
+userRouter.get("/room/solo", authMiddleware, async (req:Request,res:Response)=>{
     try{
-        const messages = await prismaClient.chat.findMany({
-            where:{
-                roomId
-            },
-            orderBy:{
-                id:"desc"
-            },
+        const userId = req.userId;
+        let room = await prismaClient.room.findFirst({
+            where: { adminId: userId },
+            orderBy: { createdAt: "desc" }
+        });
+        if(!room){
+            room = await prismaClient.room.create({ data: { adminId: userId } });
+        }
+        res.json({ room });
+    } catch (error){
+        res.status(500).json({ message: "Failed to ensure solo room" })
+    }
+})
+
+// Fetch shapes for a room (solo or collab)
+userRouter.get("/shapes/:roomId", async (req,res)=>{
+    const roomId  = String(req.params.roomId);
+    try{
+        const shapes = await prismaClient.shape.findMany({
+            where:{ roomId },
+            orderBy:{ createdAt: "desc" },
             take:200
         })
-        
-        res.json({
-            messages
-        })
+        res.json({ shapes })
     } catch(err){
-        res.status(400).json({
-            message:"Failed to get chats"
-        })
+        res.status(400).json({ message:"Failed to get shapes" })
     }
 })
 
-// Create chat (used for solo/draft saving without websockets)
-userRouter.post("/chats", authMiddleware, async (req:Request, res:Response) => {
+// Create shape (used for solo saving without websockets)
+userRouter.post("/shapes", authMiddleware, async (req:Request, res:Response) => {
     try {
-        const { roomId, message } = req.body as { roomId?: number | string; message?: string };
-        console.log("Room id is: ", roomId)
-        console.log("Message is: ", message)
+        const { roomId, message } = req.body as { roomId?: string; message?: string };
         const userId = req.userId;
-        const numericRoomId = Number(roomId);
-        if (!Number.isFinite(numericRoomId) || !message || typeof message !== 'string') {
+        if (!roomId || typeof roomId !== 'string' || !message || typeof message !== 'string') {
             res.status(400).json({ message: "Invalid roomId or message" });
             return;
         }
-        const chat = await prismaClient.chat.create({
+        const shape = await prismaClient.shape.create({
             data: {
-                roomId: numericRoomId,
+                roomId,
                 message,
-                userId: userId,
+                userId,
             }
         });
-        res.json({ message: "saved", chat });
+        res.json({ message: "saved", shape });
     } catch (err) {
-        res.status(500).json({ message: "Failed to save chat" });
+        res.status(500).json({ message: "Failed to save shape" });
     }
 });
 
-
-userRouter.get("/room/:slug", async(req,res)=>{
-
-    const slug = req.params.slug;
-    try{
-        const room  =  await prismaClient.room.findFirst({ 
-            where:{
-                slug
-            }
-        })
-        console.log("Room is: ", room)
-        res.json({
-            message:"Successfully found room",
-            room
-        })
-    } catch(err){
-        res.status(404).json({
-            message:"Room not found"
-        })
-    }  
-    
-})
+// Deprecated slug lookup removed with new schema (use /room/solo or store ids client-side)
 
 
 export {userRouter}

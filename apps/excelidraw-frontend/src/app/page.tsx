@@ -22,30 +22,17 @@ export default function Home() {
   const [shareLink, setShareLink] = useState("");
 
   useEffect(() => {
-    const ensureDraft = async () => {
-      if (!session?.user?.id) return; // only create personal draft when logged in
+    const ensureSoloRoom = async () => {
+      if (!session?.user?.id) return;
       try {
-        const slug = session?.user?.id
-          ? `draft-${session.user.id}`
-          : `draft-anon`;
-        let roomId: number | null = null;
-        try {
-          const lookup = await api.get(`${HTTP_BACKEND}/room/${slug}`);
-          roomId = lookup.data?.room?.id ?? null;
-        } catch {}
-        if (!roomId) {
-          const created = await api.post(`${HTTP_BACKEND}/room`, {
-            name: slug,
-          });
-          roomId = created.data.roomId;
-        }
-        setDraftRoomId(String(roomId));
+        const res = await api.get(`${HTTP_BACKEND}/room/solo`);
+        const roomId: string | undefined = res.data?.room?.id;
+        if (roomId) setDraftRoomId(roomId);
       } catch (e) {
-        console.error("Failed to ensure draft room", e);
-        setDraftRoomId("1");
+        console.error("Failed to ensure solo room", e);
       }
     };
-    ensureDraft();
+    ensureSoloRoom();
   }, [session?.user?.id]);
 
   // Solo mode: skip WS
@@ -115,13 +102,8 @@ export default function Home() {
                 className="bg-excali-purple hover:bg-purple-700"
                 onClick={async () => {
                   try {
-                    const slug = `room-${Math.random()
-                      .toString(36)
-                      .slice(2, 8)}`;
-                    const res = await api.post(`${HTTP_BACKEND}/room`, {
-                      name: slug,
-                    });
-                    const createdRoomId: number = res.data.roomId;
+                    const res = await api.post(`${HTTP_BACKEND}/room`);
+                    const createdRoomId: string = res.data.roomId;
                     const origin =
                       typeof window !== "undefined"
                         ? window.location.origin

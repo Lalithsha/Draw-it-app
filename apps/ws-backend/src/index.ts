@@ -189,20 +189,19 @@ wss.on('connection', function connection(ws, request) {
           return;
         }
 
-        // check if the message type is string or not. if not then return 
         if(typeof message!=="string"){
           console.error("Message is not a string");
           return;
         }
-        
-        const numericRoomId = Number(roomId);
-        if (!Number.isFinite(numericRoomId)) {
-          console.error("Invalid roomId for chat:", roomId);
+
+        if (!roomId || typeof roomId !== 'string') {
+          console.error("Invalid roomId for shape:", roomId);
           return;
         }
-        await prismaClient.chat.create({
+
+        await prismaClient.shape.create({
           data:{
-            roomId: numericRoomId,
+            roomId: roomId,
             message,
             userId: String(userId)
           }
