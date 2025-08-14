@@ -40,10 +40,11 @@ export default function Home() {
     setSocket(null);
   }, [draftRoomId]);
 
+  // Guest solo: allow drawing locally using a synthetic roomId "local"
   if (!session) {
     return (
-      <div className="w-screen h-screen bg-black text-white flex items-center justify-center">
-        Please login to start drawing.
+      <div style={{ height: "100vh", overflow: "hidden" }}>
+        <Canvas roomId={"local"} socket={null} />
       </div>
     );
   }

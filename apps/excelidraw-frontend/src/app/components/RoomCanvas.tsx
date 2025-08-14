@@ -23,6 +23,11 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
   const [shareLink, setShareLink] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   useEffect(() => {
+    // Local solo mode: no WS
+    if (roomId === "local") {
+      setSocket(null);
+      return;
+    }
     // Use session access token when available; fall back to guest_access_token
     let token: string | null = null;
     if (session?.accessToken) token = session.accessToken as string;
@@ -43,27 +48,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
     };
   }, [session?.accessToken, session, roomId]);
 
-  if (!session) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <div className="mb-4 text-lg font-semibold">
-          You must be signed in to access the canvas.
-        </div>
-        <button
-          className="px-4 py-2 bg-excali-purple text-white rounded hover:bg-purple-700"
-          onClick={() => router.push("/signin")}
-        >
-          Go to Login
-        </button>
-        <button
-          className="mt-2 px-4 py-2 bg-gray-300 text-black rounded hover:bg-gray-400"
-          onClick={() => router.push("/signup")}
-        >
-          Sign Up
-        </button>
-      </div>
-    );
-  }
+  // Guests are allowed (collab via guest token or local solo)
 
   // When solo (no socket), still render Canvas which will use HTTP persistence
 
@@ -124,12 +109,15 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
           try {
             const origin =
               typeof window !== "undefined" ? window.location.origin : "";
-            if (/^\d+$/.test(roomId)) {
+            if (roomId !== "local") {
               const link = `${origin}/canvas/${roomId}`;
               setShareLink(link);
               return;
             }
-            const res = await api.post(`${HTTP_BACKEND}/room`);
+            const endpoint = session?.user?.id
+              ? `${HTTP_BACKEND}/room`
+              : `${HTTP_BACKEND}/room/guest`;
+            const res = await api.post(endpoint);
             const createdRoomId: string = res.data.roomId;
             const link = `${origin}/canvas/${createdRoomId}`;
             setShareLink(link);
