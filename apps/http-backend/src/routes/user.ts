@@ -1,6 +1,7 @@
 import { Response,Request, Router } from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { CreateUserSchema, SigninSchema } from "@repo/common/types";
+import { z } from "zod";
 import {prismaClient} from "@repo/db/client"
 import express from "express";
 import bcrypt from "bcryptjs";
@@ -309,17 +310,29 @@ userRouter.post("/oauth/bridge", async (req: Request, res: Response) => {
 userRouter.post("/room", authMiddleware, async (req:Request,res:Response)=>{
     try{
         const userId = req.userId;
-        const room = await prismaClient.room.create({
-            data:{
-                adminId: userId
-            }
-        })
+        const room = await prismaClient.room.create({ data:{ adminId: userId } })
         res.json({ roomId: room.id })
         return;
     } catch(error){
         res.status(500).json({
             message:`Failed to create room`
         })
+    }
+})
+
+// Guest creates ephemeral room (no auth) – creates a system-owned ephemeral room
+userRouter.post("/room/guest", async (_req:Request,res:Response)=>{
+    try{
+        // Option A: create under a synthetic admin (system) to keep adminId relation valid
+        // Retrieve or lazily create a special system user
+        let system = await prismaClient.user.findFirst({ where: { email: "system@guest" } });
+        if (!system) {
+            system = await prismaClient.user.create({ data: { email: "system@guest", name: "System", password: "x" } });
+        }
+        const room = await prismaClient.room.create({ data: { adminId: system.id } });
+        res.json({ roomId: room.id })
+    } catch (error){
+        res.status(500).json({ message:`Failed to create guest room` })
     }
 })
 
@@ -358,12 +371,20 @@ userRouter.get("/shapes/:roomId", async (req,res)=>{
 // Create shape (used for solo saving without websockets)
 userRouter.post("/shapes", authMiddleware, async (req:Request, res:Response) => {
     try {
-        const { roomId, message } = req.body as { roomId?: string; message?: string };
+    const { roomId, message } = req.body as { roomId?: string; message?: string };
         const userId = req.userId;
         if (!roomId || typeof roomId !== 'string' || !message || typeof message !== 'string') {
             res.status(400).json({ message: "Invalid roomId or message" });
             return;
         }
+    // validate shape payload structure (loose pass-through for now)
+    try {
+      const ShapePayloadSchema = z.object({ shape: z.object({}).passthrough() });
+      ShapePayloadSchema.parse(JSON.parse(message));
+    } catch {
+      res.status(400).json({ message: "Invalid shape payload" });
+      return;
+    }
         const shape = await prismaClient.shape.create({
             data: {
                 roomId,
