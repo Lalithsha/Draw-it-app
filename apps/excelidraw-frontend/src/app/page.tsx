@@ -102,7 +102,9 @@ export default function Home() {
                 className="bg-excali-purple hover:bg-purple-700"
                 onClick={async () => {
                   try {
-                    const res = await api.post(`${HTTP_BACKEND}/room`);
+                    const res = await api.post(
+                      `${HTTP_BACKEND}/room${session?.user?.id ? "" : "/guest"}`
+                    );
                     const createdRoomId: string = res.data.roomId;
                     const origin =
                       typeof window !== "undefined"

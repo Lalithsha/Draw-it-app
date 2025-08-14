@@ -73,8 +73,7 @@ export class Game {
         if (!this.socket) return;
         this.socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            
-            if (message.type === 'chat') {
+            if (message.type === 'STREAM_SHAPE' || message.type === 'chat') {
                 const parsedData = JSON.parse(message.message);
                 this.existingShape.push(parsedData.shape);
                 this.clearCanvas();
@@ -246,7 +245,7 @@ export class Game {
             this.existingShape.push(shape);
             const payload = JSON.stringify({ shape });
             if (this.socket) {
-                this.socket.send(JSON.stringify({ type: "chat", message: payload, roomId: this.roomId }));
+                this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
             } else {
                 postShape(this.roomId, payload);
             }
@@ -307,7 +306,7 @@ export class Game {
             this.existingShape.push(pencilSegment);
             const payload = JSON.stringify({ shape: pencilSegment });
             if (this.socket) {
-                this.socket.send(JSON.stringify({ type: "chat", message: payload, roomId: this.roomId }));
+                this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
             } else {
                 postShape(this.roomId, payload);
             }
@@ -462,7 +461,7 @@ export class Game {
  sendShapeUpdate(shape: Shape) {
         const payload = JSON.stringify({ shape });
         if (this.socket) {
-            this.socket.send(JSON.stringify({ type: "chat", message: payload, roomId: this.roomId }));
+            this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
         } else {
             postShape(this.roomId, payload);
         }
