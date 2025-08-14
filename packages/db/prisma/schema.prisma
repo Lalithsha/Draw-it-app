@@ -23,13 +23,14 @@ model User {
 }
 
 model Room {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   adminId     String
-  admin       User     @relation(fields: [adminId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isEphemeral Boolean  @default(false)
+  admin       User        @relation(fields: [adminId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  isEphemeral Boolean     @default(false)
   Shape       Shape[]
+  ShareLink   ShareLink[]
 }
 
 model Shape {
@@ -58,4 +59,17 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model ShareLink {
+  id           String    @id @default(uuid())
+  roomId       String
+  Room         Room      @relation(fields: [roomId], references: [id])
+  token        String    @unique
+  passcodeHash String?
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([roomId])
 }
