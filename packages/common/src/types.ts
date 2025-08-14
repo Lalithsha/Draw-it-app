@@ -24,6 +24,7 @@ export enum WsDataType {
   JOIN = "join_room",
   LEAVE = "leave_room",
   CHAT = "chat",
+  JOIN_WITH_TOKEN = "join_with_token",
   USER_JOINED = "USER_JOINED",
   USER_LEFT = "USER_LEFT",
   DRAW = "DRAW",
