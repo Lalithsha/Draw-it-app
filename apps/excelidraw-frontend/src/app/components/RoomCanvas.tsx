@@ -23,12 +23,20 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
   const [shareLink, setShareLink] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   useEffect(() => {
-    // Collab rooms are now string IDs; connect if we have a session token
-    if (!session || !session?.accessToken) {
+    // Use session access token when available; fall back to guest_access_token
+    let token: string | null = null;
+    if (session?.accessToken) token = session.accessToken as string;
+    if (!token) {
+      try {
+        token = localStorage.getItem("guest_access_token");
+      } catch {}
+    }
+    if (!token) {
       setSocket(null);
       return;
     }
-    const ws = new WebSocket(`${WS_URL}?token=${session?.accessToken}`);
+
+    const ws = new WebSocket(`${WS_URL}?token=${token}`);
     ws.onopen = () => {
       setSocket(ws);
       ws.send(JSON.stringify({ type: "join_room", roomId }));
