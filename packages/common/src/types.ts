@@ -14,6 +14,12 @@ export const CreateRoomSchema = z.object({
 })
 
 
+// Strict validation for shape payloads sent via HTTP/WS
+export const ShapePayloadSchema = z.object({
+  shape: z.object({}).passthrough()
+});
+export type ShapePayload = z.infer<typeof ShapePayloadSchema>;
+
 export enum WsDataType {
   JOIN = "join_room",
   LEAVE = "leave_room",
