@@ -7,10 +7,16 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { randomBytes, createHash, timingSafeEqual } from "crypto";
 
 const userRouter: Router = Router();
 const app = express();
 app.use(express.json());
+
+// Simple in-memory rate limit for POST /shapes (per IP)
+const SHAPE_RATE_WINDOW_MS = 1000;
+const SHAPE_MAX_PER_WINDOW = 30;
+const shapeRate: Map<string, { windowStart: number; count: number }> = new Map();
 
 function signAccessToken(userId: number | string) {
     if (!process.env.JWT_SECRET) {
@@ -19,6 +25,17 @@ function signAccessToken(userId: number | string) {
     return jwt.sign({ id: userId, type: "access" }, process.env.JWT_SECRET, {
         expiresIn: "15m",
     });
+}
+
+// Guest access token, scoped to a room id (type: "access", id: guest:<gid>, roomId)
+function signGuestAccessToken(guestId: string, roomId: string) {
+  const secret = process.env.JWT_SECRET as string;
+  if (!secret) throw new Error("JWT_SECRET is not configured");
+  return jwt.sign({ id: `guest:${guestId}`, type: "access", roomId }, secret, { expiresIn: "30m" });
+}
+
+function hashPasscode(passcode: string) {
+  return createHash("sha256").update(passcode).digest("hex");
 }
 
 function signRefreshToken(userId: number | string) {
@@ -336,6 +353,65 @@ userRouter.post("/room/guest", async (_req:Request,res:Response)=>{
     }
 })
 
+// Create a signed share link (auth only), optional passcode, optional expiry
+userRouter.post("/share", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const prisma: any = prismaClient;
+    const { roomId, expiresInMinutes, passcode } = req.body as { roomId?: string; expiresInMinutes?: number; passcode?: string };
+    if (!roomId) {
+      res.status(400).json({ message: "roomId required" }); return;
+    }
+    const room = await prismaClient.room.findUnique({ where: { id: roomId } });
+    if (!room || room.adminId !== req.userId) { res.status(403).json({ message: "not allowed" }); return; }
+    const token = randomBytes(16).toString("hex");
+    const expiresAt = expiresInMinutes ? new Date(Date.now() + expiresInMinutes * 60 * 1000) : null;
+    const passcodeHash = passcode ? hashPasscode(passcode) : null;
+    await prisma.shareLink.create({ data: { roomId, token, expiresAt: expiresAt ?? undefined, passcodeHash: passcodeHash ?? undefined } });
+    res.json({ token, expiresAt });
+  } catch (e) {
+    res.status(500).json({ message: "failed to create share link" });
+  }
+});
+
+// Revoke a share link
+userRouter.post("/share/revoke", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const prisma: any = prismaClient;
+    const { token } = req.body as { token?: string };
+    if (!token) { res.status(400).json({ message: "token required" }); return; }
+    const link = await prisma.shareLink.findUnique({ where: { token } });
+    if (!link) { res.status(404).json({ message: "not found" }); return; }
+    const room = await prismaClient.room.findUnique({ where: { id: link.roomId } });
+    if (!room || room.adminId !== req.userId) { res.status(403).json({ message: "not allowed" }); return; }
+    await prisma.shareLink.update({ where: { token }, data: { revokedAt: new Date() } });
+    res.json({ message: "revoked" });
+  } catch {
+    res.status(500).json({ message: "failed to revoke" });
+  }
+});
+
+// Guest bridge: validate share link and issue room-scoped guest access token
+userRouter.post("/guest/bridge", async (req: Request, res: Response) => {
+  try {
+    const prisma: any = prismaClient;
+    const { token, passcode } = req.body as { token?: string; passcode?: string };
+    if (!token) { res.status(400).json({ message: "token required" }); return; }
+    const link = await prisma.shareLink.findUnique({ where: { token } });
+    if (!link || link.revokedAt) { res.status(403).json({ message: "invalid link" }); return; }
+    if (link.expiresAt && link.expiresAt < new Date()) { res.status(403).json({ message: "expired" }); return; }
+    if (link.passcodeHash) {
+      if (!passcode) { res.status(401).json({ message: "passcode required" }); return; }
+      const provided = hashPasscode(passcode);
+      if (provided !== link.passcodeHash) { res.status(401).json({ message: "invalid passcode" }); return; }
+    }
+    const guestId = randomBytes(8).toString("hex");
+    const accessToken = signGuestAccessToken(guestId, link.roomId);
+    res.json({ token: accessToken, roomId: link.roomId });
+  } catch {
+    res.status(500).json({ message: "failed guest bridge" });
+  }
+});
+
 // Ensure a solo room for the current admin (returns the latest or creates one)
 userRouter.get("/room/solo", authMiddleware, async (req:Request,res:Response)=>{
     try{
@@ -371,6 +447,15 @@ userRouter.get("/shapes/:roomId", async (req,res)=>{
 // Create shape (used for solo saving without websockets)
 userRouter.post("/shapes", authMiddleware, async (req:Request, res:Response) => {
     try {
+    // basic IP rate limiting
+    const key = req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown";
+    const now = Date.now();
+    const entry = shapeRate.get(key) || { windowStart: now, count: 0 };
+    if (now - entry.windowStart > SHAPE_RATE_WINDOW_MS) { entry.windowStart = now; entry.count = 0; }
+    entry.count++;
+    shapeRate.set(key, entry);
+    if (entry.count > SHAPE_MAX_PER_WINDOW) { res.status(429).json({ message: "rate limit" }); return; }
+
     const { roomId, message } = req.body as { roomId?: string; message?: string };
         const userId = req.userId;
         if (!roomId || typeof roomId !== 'string' || !message || typeof message !== 'string') {

@@ -15,6 +15,8 @@ app.use(
       "http://127.0.0.1:3000",
     ],
     credentials: true,
+    methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+    allowedHeaders: ["Content-Type","Authorization"],
   })
 );
 app.use(cookieParser()); // Use cookie-parser middleware BEFORE your routes
