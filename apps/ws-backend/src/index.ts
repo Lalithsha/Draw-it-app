@@ -154,7 +154,23 @@ wss.on('connection', function connection(ws, request) {
     }
   });
   
+  // Basic WS rate limiting per connection
+  const RATE_WINDOW_MS = 1000;
+  const MAX_MSGS_PER_WINDOW = 60;
+  const MAX_PAYLOAD_BYTES = 8 * 1024;
+  let windowStart = Date.now();
+  let msgCount = 0;
+
   ws.on('message', async function message(data) {
+    const now = Date.now();
+    if (now - windowStart > RATE_WINDOW_MS) { windowStart = now; msgCount = 0; }
+    msgCount++;
+    if (msgCount > MAX_MSGS_PER_WINDOW) {
+      console.warn(`Rate limit exceeded by ${auth.userId}`);
+      return;
+    }
+    if (typeof data === 'string' && (data as unknown as string).length > MAX_PAYLOAD_BYTES) return;
+    if (data instanceof Buffer && data.byteLength > MAX_PAYLOAD_BYTES) return;
 
     const parsedData:WebSocketMessage  = JSON.parse(data.toString()); // {type:"join-room", roomId:1}
     // const parsedData = JSON.parse(data as unknown as string); // {type: "join-room", roomId: 1}
@@ -195,6 +211,8 @@ wss.on('connection', function connection(ws, request) {
       user.rooms.push(parsedData.roomId);
       }
     break;
+
+    // JOIN_WITH_TOKEN not required; HTTP bridge issues access token, client uses JOIN
 
     case WsDataType.LEAVE:
       {
