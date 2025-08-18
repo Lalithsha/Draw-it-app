@@ -23,6 +23,8 @@ export function Canvas({
   const [game, setGame] = useState<Game | null>(null);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const { theme } = useTheme();
+  const [canvasWidth, setCanvasWidth] = useState(0);
+  const [canvasHeight, setCanvasHeight] = useState(0);
 
   useEffect(() => {
     if (game) {
@@ -63,10 +65,15 @@ export function Canvas({
   useEffect(() => {
     const onResize = () => {
       if (!canvasRef.current) return;
-      canvasRef.current.width = window.innerWidth;
-      canvasRef.current.height = window.innerHeight;
+      setCanvasWidth(window.innerWidth);
+      setCanvasHeight(window.innerHeight);
       game?.render();
     };
+    // Set initial size
+    if (typeof window !== "undefined") {
+      setCanvasWidth(window.innerWidth);
+      setCanvasHeight(window.innerHeight);
+    }
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [game]);
@@ -75,8 +82,8 @@ export function Canvas({
     <div className="relative w-full h-full">
       <canvas
         ref={canvasRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
+        width={canvasWidth}
+        height={canvasHeight}
         className="absolute top-0 left-0 z-0"
       />
       <div className="absolute top-0 left-0 right-0 flex justify-center z-10">

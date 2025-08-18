@@ -20,6 +20,7 @@ export class SelectionController{
         height:number;
     } | null = null;
     
+    private originalPencilPoints: { x: number; y: number }[] | null = null;
     
     private game:  Game;
     
@@ -80,18 +81,33 @@ export class SelectionController{
                 }   
 
             case Tool.Line:  
-            case Tool.Pencil:
                 const minX = Math.min(shape.startX, shape.endX);
                 const minY = Math.min(shape.startY, shape.endY);
                 const maxX = Math.max(shape.startX, shape.endX);
                 const maxY = Math.max(shape.startY, shape.endY);
-                const padding = 5;
-                return {
-                    x: minX - padding,
-                    y: minY - padding,
-                    width: maxX - minX + 2 * padding, 
-                    height: maxY - minY + 2 * padding
+                 const padding = 5;
+                 return {
+                     x: minX - padding,
+                     y: minY - padding,
+                     width: maxX - minX + 2 * padding, 
+                     height: maxY - minY + 2 * padding
+                 }
+            case Tool.Pencil:
+                const pencilPoints = (shape as unknown as { points: { x: number; y: number }[] }).points;
+                if (!pencilPoints || pencilPoints.length === 0) {
+                    return { x: 0, y: 0, width: 0, height: 0 };
                 }
+                const minPx = Math.min(...pencilPoints.map(p => p.x));
+                const minPy = Math.min(...pencilPoints.map(p => p.y));
+                const maxPx = Math.max(...pencilPoints.map(p => p.x));
+                const maxPy = Math.max(...pencilPoints.map(p => p.y));
+                const pencilPadding = 5;
+                return {
+                    x: minPx - pencilPadding,
+                    y: minPy - pencilPadding,
+                    width: maxPx - minPx + 2 * pencilPadding,
+                    height: maxPy - minPy + 2 * pencilPadding
+                };
             default:
                 return {x:0, y:0, width:0, height:0};    
         }
@@ -135,14 +151,18 @@ export class SelectionController{
             else if(this.selectedShape.type === Tool.Circle) {
                 this.dragOffset = {x: x - this.selectedShape.centerX, y: y - this.selectedShape.centerY}
             }
-            else if(this.selectedShape.type === Tool.Line || this.selectedShape.type === Tool.Pencil){
+            else if(this.selectedShape.type === Tool.Line){
                 this.dragOffset = {x: x - this.selectedShape.startX, y: y - this.selectedShape.startY}
                 this.dragEndOffset={x:x-this.selectedShape.endX, y:y-this.selectedShape.endY};
             }
-            this.setCursor("move");
-        }
-    }
-    
+            else if(this.selectedShape.type === Tool.Pencil){
+                this.dragOffset = { x, y };
+                this.originalPencilPoints = (this.selectedShape as { points: {x:number;y:number}[] }).points.map(p => ({ ...p }));
+            }
+             this.setCursor("move");
+         }
+     }
+
      /** Update shape position while dragging */
      updateDragging(x:number, y:number){
         if(this.isDragging && this.selectedShape){
@@ -154,22 +174,32 @@ export class SelectionController{
                 this.selectedShape.centerX = x - this.dragOffset.x;
                 this.selectedShape.centerY = y - this.dragOffset.y;
             }
-            else if(this.selectedShape.type === Tool.Line || this.selectedShape.type === Tool.Pencil){
-                this.selectedShape.startX = x - this.dragOffset.x;
-                this.selectedShape.startY = y - this.dragOffset.y;
-                this.selectedShape.endX = x - this.dragEndOffset.x;
-                this.selectedShape.endY = y - this.dragEndOffset.y;
+            else if(this.selectedShape.type === Tool.Line){
+                 this.selectedShape.startX = x - this.dragOffset.x;
+                 this.selectedShape.startY = y - this.dragOffset.y;
+                 this.selectedShape.endX = x - this.dragEndOffset.x;
+                 this.selectedShape.endY = y - this.dragEndOffset.y;
+             }
+            else if(this.selectedShape.type === Tool.Pencil && this.originalPencilPoints){
+                const dx = x - this.dragOffset.x;
+                const dy = y - this.dragOffset.y;
+                const pts = (this.selectedShape as unknown as { points: {x:number;y:number}[] }).points;
+                for (let i = 0; i < pts.length; i++) {
+                    pts[i].x = this.originalPencilPoints[i].x + dx;
+                    pts[i].y = this.originalPencilPoints[i].y + dy;
+                }
             }
-        }
-    }
+         }
+     }
 
-    /* Stop dragging */
+     /* Stop dragging */
     stopDragging(){
         this.isDragging = false;
         this.resetCursor();
         if (this.selectedShape) { // Check if a shape is selected
             this.game.sendShapeUpdate(this.selectedShape); // Call the new method in Game
         }
+        this.originalPencilPoints = null;
     }
     
 
@@ -181,6 +211,9 @@ export class SelectionController{
                 this.isResizing = true;
                 this.activeResizeHandle = handle;
                 this.originalShapeBounds={...bounds};
+                if (this.selectedShape.type === Tool.Pencil) {
+                    this.originalPencilPoints = (this.selectedShape as { points: {x:number;y:number}[] }).points.map(p => ({ ...p }));
+                }
                 this.setCursor(handle.cursor);
             }
         }
@@ -224,23 +257,35 @@ export class SelectionController{
                 this.selectedShape.centerX = centerX;
                 this.selectedShape.centerY = centerY;
                 this.selectedShape.radius = Math.min(newBounds.width, newBounds.height) / 2;
-            } else if (this.selectedShape.type === Tool.Line || this.selectedShape.type === Tool.Pencil) {
-                switch (this.activeResizeHandle.position) {
-                    case "top-left":
-                        this.selectedShape.startX = x;
-                        this.selectedShape.startY = y;
-                        break;
-                    case "bottom-right":
-                        this.selectedShape.endX = x;
-                        this.selectedShape.endY = y;
-                        break;
-                    // Add "top-right" and "bottom-left" if needed
+            } else if (this.selectedShape.type === Tool.Line) {
+                 switch (this.activeResizeHandle.position) {
+                     case "top-left":
+                         this.selectedShape.startX = x;
+                         this.selectedShape.startY = y;
+                         break;
+                     case "bottom-right":
+                         this.selectedShape.endX = x;
+                         this.selectedShape.endY = y;
+                         break;
+                     // Add "top-right" and "bottom-left" if needed
+                 }
+            } else if (this.selectedShape.type === Tool.Pencil && this.originalPencilPoints && this.originalShapeBounds) {
+                // scale pencil points to fit new bounds
+                const ob = this.originalShapeBounds;
+                const sx = ob.width !== 0 ? (newBounds.width / ob.width) : 1;
+                const sy = ob.height !== 0 ? (newBounds.height / ob.height) : 1;
+                const pts = (this.selectedShape as { points: {x:number;y:number}[] }).points;
+                for (let i = 0; i < pts.length; i++) {
+                    const px = this.originalPencilPoints[i].x;
+                    const py = this.originalPencilPoints[i].y;
+                    pts[i].x = newBounds.x + (px - ob.x) * sx;
+                    pts[i].y = newBounds.y + (py - ob.y) * sy;
                 }
             }
-        }
-    }
+         }
+     }
 
-    /** Stop resizing */
+     /** Stop resizing */
     stopResizing() {
         this.isResizing = false;
         this.activeResizeHandle = null;
@@ -249,6 +294,7 @@ export class SelectionController{
         if (this.selectedShape) { // Check if a shape is selected
             this.game.sendShapeUpdate(this.selectedShape); // Call the new method in Game
         }
+        this.originalPencilPoints = null;
     }
 
     /** Draw the selection box with resize handles */

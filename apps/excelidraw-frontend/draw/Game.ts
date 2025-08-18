@@ -120,14 +120,19 @@ export class Game {
                 this.ctx.stroke();
             }
             else if(shape.type === Tool.Pencil){
-                this.ctx.beginPath();
-                this.ctx.strokeStyle = this.strokeColor;
-                this.ctx.lineCap = 'round'; // Good for smoother pencil strokes
-                this.ctx.lineJoin = 'round'; // Good for smoother pencil strokes
-                this.ctx.moveTo(shape.startX, shape.startY);
-                this.ctx.lineTo(shape.endX,shape.endY);
-                this.ctx.stroke();
-                this.ctx.closePath();
+                const pts: { x:number; y:number }[] = (shape as unknown as { points: {x:number;y:number}[] }).points;
+                if (pts && pts.length > 1) {
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = this.strokeColor;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.moveTo(pts[0].x, pts[0].y);
+                    for (let i = 1; i < pts.length; i++) {
+                        this.ctx.lineTo(pts[i].x, pts[i].y);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
             }
         })
     }
@@ -179,6 +184,10 @@ export class Game {
         this.startY = worldY;
         this.previousX = e.clientX;
         this.previousY = e.clientY;
+        if (this.selectedTool === Tool.Pencil) {
+            const pencil: Shape = { id: uuidv4(), type: Tool.Pencil, points: [{ x: worldX, y: worldY }] } as unknown as Shape;
+            this.existingShape.push(pencil);
+        }
     }
 };
     
@@ -230,15 +239,16 @@ export class Game {
                 radius: radius
             };
         } else if (this.selectedTool === Tool.Pencil) {
-            const pencilSegment: Shape = {
-                id: uuidv4(),
-                type: Tool.Pencil,
-                startX: this.startX,
-                startY: this.startY,
-                endX: worldX,
-                endY: worldY
-            };
-            this.existingShape.push(pencilSegment);
+            // finalize current pencil: push final payload
+            const current = this.existingShape[this.existingShape.length - 1];
+            if (current && current.type === Tool.Pencil) {
+                const payload = JSON.stringify({ shape: current });
+                if (this.socket) {
+                    this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
+                } else {
+                    postShape(this.roomId, payload);
+                }
+            }
         }
 
         if (shape) {
@@ -295,23 +305,24 @@ export class Game {
             this.ctx.stroke();
             this.ctx.closePath();
         } else if (this.selectedTool === Tool.Pencil) {
-            const pencilSegment: Shape = {
-                id: uuidv4(),
-                type: Tool.Pencil,
-                startX: this.startX,
-                startY: this.startY,
-                endX: worldX,
-                endY: worldY
-            };
-            this.existingShape.push(pencilSegment);
-            const payload = JSON.stringify({ shape: pencilSegment });
-            if (this.socket) {
-                this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
-            } else {
-                postShape(this.roomId, payload);
+            // Throttled point append for current stroke
+            let current = this.existingShape[this.existingShape.length - 1] as Shape | undefined;
+            if (!current || current.type !== Tool.Pencil) {
+                const pencil = { id: uuidv4(), type: Tool.Pencil, points: [{ x: this.startX, y: this.startY }] } as unknown as Shape;
+                this.existingShape.push(pencil);
+                current = pencil;
             }
-            this.startX = worldX;
-            this.startY = worldY;
+            (current as unknown as { points: {x:number;y:number}[] }).points.push({ x: worldX, y: worldY });
+            // Send incremental updates in batches: only every N points
+            const pts = (current as unknown as { points: { x: number; y: number }[] }).points;
+            if (pts.length % 5 === 0) {
+                const payload = JSON.stringify({ shape: current });
+                if (this.socket) {
+                    this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
+                } else {
+                    postShape(this.roomId, payload);
+                }
+            }
         }
         this.render();
     }
@@ -382,12 +393,15 @@ export class Game {
             this.ctx.lineTo(shape.endX, shape.endY);
             this.ctx.stroke();
         } else if (shape.type === Tool.Pencil) {
-            this.ctx.beginPath();
-            this.ctx.lineCap = "round";
-            this.ctx.lineJoin = "round";
-            this.ctx.moveTo(shape.startX, shape.startY);
-            this.ctx.lineTo(shape.endX, shape.endY);
-            this.ctx.stroke();
+            const pts: { x:number; y:number }[] = (shape as unknown as { points: {x:number;y:number}[] }).points;
+            if (pts && pts.length > 1) {
+                this.ctx.beginPath();
+                this.ctx.lineCap = "round";
+                this.ctx.lineJoin = "round";
+                this.ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < pts.length; i++) this.ctx.lineTo(pts[i].x, pts[i].y);
+                this.ctx.stroke();
+            }
         }
     });
 

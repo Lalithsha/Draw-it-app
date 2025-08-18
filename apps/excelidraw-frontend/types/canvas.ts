@@ -30,10 +30,7 @@ export type Shape = {
 } | {
     id: string;
     type: Tool.Pencil;
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
+    points: { x: number; y: number }[];
 };
 
 export interface ResizeHandle{
