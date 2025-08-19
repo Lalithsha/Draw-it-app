@@ -103,29 +103,34 @@ function TopBar({
   return (
     <div className="mt-2 flex rounded-md shadow-md pointer-events-auto cursor-pointer border border-gray-400 bg-black/30 dark:bg-black/30 bg-opacity-30 backdrop-blur-sm">
       <IconButton
-        activated={selectedTool === Tool.Selection}
         icon={<MousePointer />}
         onClick={() => setSelectedTool(Tool.Selection)}
+        activated={selectedTool === Tool.Selection}
+        tooltip="Selection"
       />
       <IconButton
-        activated={selectedTool === Tool.Pencil}
         icon={<Pencil />}
         onClick={() => setSelectedTool(Tool.Pencil)}
+        activated={selectedTool === Tool.Pencil}
+        tooltip="Pencil"
       />
       <IconButton
-        activated={selectedTool === Tool.Rectangle}
         icon={<RectangleHorizontal />}
         onClick={() => setSelectedTool(Tool.Rectangle)}
+        activated={selectedTool === Tool.Rectangle}
+        tooltip="Rectangle"
       />
       <IconButton
-        activated={selectedTool === Tool.Circle}
         icon={<Circle />}
         onClick={() => setSelectedTool(Tool.Circle)}
+        activated={selectedTool === Tool.Circle}
+        tooltip="Circle"
       />
       <IconButton
-        activated={selectedTool === Tool.Line}
         icon={<Minus />}
         onClick={() => setSelectedTool(Tool.Line)}
+        activated={selectedTool === Tool.Line}
+        tooltip="Line"
       />
     </div>
   );
