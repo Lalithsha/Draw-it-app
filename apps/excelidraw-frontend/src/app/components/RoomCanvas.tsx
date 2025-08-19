@@ -14,14 +14,17 @@ import {
 } from "@repo/ui/components/canvas-sidebar";
 import { HTTP_BACKEND } from "../../../config";
 import { api } from "../lib/api";
+import { useShareModal } from "../hooks/use-share-modal";
 
 export function RoomCanvas({ roomId }: { roomId: string }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
-  const [shareOpen, setShareOpen] = useState(false);
-  const [shareLink, setShareLink] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { shareOpen, setShareOpen, shareModalProps, setShareLink } =
+    useShareModal({
+      roomId: roomId,
+    });
   useEffect(() => {
     // Local solo mode: no WS
     if (roomId === "local") {
@@ -92,7 +95,6 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
           className="bg-white text-black border shadow dark:bg-black dark:text-white"
           variant="outline"
           onClick={() => {
-            setShareLink("");
             setShareOpen(true);
           }}
         >
@@ -100,28 +102,21 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
         </Button>
       </div>
       <CanvasShareModal
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        userName={session?.user?.name ?? "Anonymous"}
-        shareLink={shareLink}
-        onCopy={() => shareLink && navigator.clipboard.writeText(shareLink)}
+        {...shareModalProps}
         onStartSession={async () => {
           try {
-            const origin =
-              typeof window !== "undefined" ? window.location.origin : "";
-            if (roomId !== "local") {
-              const link = `${origin}/canvas/${roomId}`;
+            if (roomId === "local") {
+              const origin =
+                typeof window !== "undefined" ? window.location.origin : "";
+              const endpoint = session?.user?.id
+                ? `${HTTP_BACKEND}/room`
+                : `${HTTP_BACKEND}/room/guest`;
+              const res = await api.post(endpoint);
+              const createdRoomId: string = res.data.roomId;
+              const link = `${origin}/canvas/${createdRoomId}`;
               setShareLink(link);
-              return;
+              router.push(`/canvas/${createdRoomId}`);
             }
-            const endpoint = session?.user?.id
-              ? `${HTTP_BACKEND}/room`
-              : `${HTTP_BACKEND}/room/guest`;
-            const res = await api.post(endpoint);
-            const createdRoomId: string = res.data.roomId;
-            const link = `${origin}/canvas/${createdRoomId}`;
-            setShareLink(link);
-            router.push(`/canvas/${createdRoomId}`);
           } catch (e) {
             console.error("Failed to start session", e);
           }

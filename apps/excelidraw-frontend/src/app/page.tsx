@@ -6,13 +6,17 @@ import { Button } from "@repo/ui/components/button";
 import { api } from "./lib/api";
 import { HTTP_BACKEND } from "../../config";
 import { Canvas } from "./components/Canvas";
+import { useShareModal } from "./hooks/use-share-modal";
 
 export default function Home() {
   const { data: session } = useSession();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [draftRoomId, setDraftRoomId] = useState<string | null>(null);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [shareLink, setShareLink] = useState("");
+
+  const { shareOpen, setShareOpen, shareModalProps, setShareLink } =
+    useShareModal({
+      roomId: draftRoomId,
+    });
 
   useEffect(() => {
     const ensureSoloRoom = async () => {
@@ -58,7 +62,6 @@ export default function Home() {
           className="bg-white text-black border shadow dark:bg-black dark:text-white"
           variant="outline"
           onClick={() => {
-            setShareLink("");
             setShareOpen(true);
           }}
         >
@@ -66,23 +69,14 @@ export default function Home() {
         </Button>
       </div>
       <CanvasShareModal
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        userName={session?.user?.name ?? "Anonymous"}
-        shareLink={shareLink}
-        onCopy={() => shareLink && navigator.clipboard.writeText(shareLink)}
+        {...shareModalProps}
         onStartSession={async () => {
-          try {
+          // In the home page, draftRoomId is always a real room ID, not 'local'
+          if (draftRoomId) {
             const origin =
               typeof window !== "undefined" ? window.location.origin : "";
-            // In the home page, draftRoomId is always a real room ID, not 'local'
-            if (draftRoomId) {
-              const link = `${origin}/canvas/${draftRoomId}`;
-              console.log("link", link);
-              setShareLink(link);
-            }
-          } catch (e) {
-            console.error("Failed to start session", e);
+            const link = `${origin}/canvas/${draftRoomId}`;
+            window.location.href = `/canvas/${draftRoomId}`;
           }
         }}
       />
