@@ -5,7 +5,7 @@ import { CanvasShareModal } from "@repo/ui/components/canvas-share-modal";
 import { Button } from "@repo/ui/components/button";
 import { api } from "./lib/api";
 import { HTTP_BACKEND } from "../../config";
-import { Canvas } from "./components/Canvas";
+import { RoomCanvas } from "./components/RoomCanvas";
 import { useShareModal } from "./hooks/use-share-modal";
 
 export default function Home() {
@@ -39,11 +39,7 @@ export default function Home() {
 
   // Guest solo: allow drawing locally using a synthetic roomId "local"
   if (!session) {
-    return (
-      <div style={{ height: "100vh", overflow: "hidden" }}>
-        <Canvas roomId={"local"} socket={null} />
-      </div>
-    );
+    return <RoomCanvas roomId={"local"} />;
   }
 
   if (!draftRoomId) {
@@ -56,18 +52,7 @@ export default function Home() {
 
   return (
     <div style={{ height: "100vh", overflow: "hidden" }}>
-      <Canvas roomId={draftRoomId} socket={socket} />
-      <div className="absolute top-3 right-4 z-50">
-        <Button
-          className="bg-white text-black border shadow dark:bg-black dark:text-white"
-          variant="outline"
-          onClick={() => {
-            setShareOpen(true);
-          }}
-        >
-          Share
-        </Button>
-      </div>
+      <RoomCanvas roomId={draftRoomId} />
       <CanvasShareModal
         {...shareModalProps}
         onStartSession={async () => {
