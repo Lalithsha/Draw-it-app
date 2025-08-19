@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "../hooks/use-toast";
 
 export const api = axios.create({
   withCredentials: true,
@@ -22,5 +23,29 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.message ===
+        "Invalid/expired token, please re-authenticate"
+    ) {
+      toast({
+        title: "Session Expired",
+        description: "Please log in again to continue.",
+        variant: "destructive",
+      });
+      // a small delay to allow the user to see the toast
+      setTimeout(() => {
+        window.location.href = "/signin";
+      }, 2000);
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
 
 
