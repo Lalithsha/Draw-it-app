@@ -1,18 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { CanvasShareModal } from "@repo/ui/components/canvas-share-modal";
+import { Button } from "@repo/ui/components/button";
+import { api } from "./lib/api";
 import { HTTP_BACKEND } from "../../config";
 import { Canvas } from "./components/Canvas";
-import { api } from "./lib/api";
-import { Button } from "@repo/ui/components/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@repo/ui/components/dialog";
-import { Input } from "@repo/ui/components/input";
 
 export default function Home() {
   const { data: session } = useSession();
@@ -60,9 +53,10 @@ export default function Home() {
   return (
     <div style={{ height: "100vh", overflow: "hidden" }}>
       <Canvas roomId={draftRoomId} socket={socket} />
-      <div className="absolute top-2 right-4 z-10">
+      <div className="absolute top-3 right-4 z-50">
         <Button
-          className="bg-excali-purple hover:bg-purple-700"
+          className="bg-white text-black border shadow dark:bg-black dark:text-white"
+          variant="outline"
           onClick={() => {
             setShareLink("");
             setShareOpen(true);
@@ -71,65 +65,27 @@ export default function Home() {
           Share
         </Button>
       </div>
-      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Live collaboration</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-gray-500 mb-1">Your name</div>
-              <Input readOnly value={session?.user?.name ?? "Anonymous"} />
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 mb-1">Link</div>
-              <div className="flex gap-2">
-                <Input
-                  readOnly
-                  value={shareLink}
-                  placeholder="Click Start session"
-                />
-                <Button
-                  onClick={() =>
-                    shareLink && navigator.clipboard.writeText(shareLink)
-                  }
-                >
-                  Copy link
-                </Button>
-              </div>
-            </div>
-            <div className="pt-2 flex gap-2">
-              <Button
-                className="bg-excali-purple hover:bg-purple-700"
-                onClick={async () => {
-                  try {
-                    const res = await api.post(
-                      `${HTTP_BACKEND}/room${session?.user?.id ? "" : "/guest"}`
-                    );
-                    const createdRoomId: string = res.data.roomId;
-                    const origin =
-                      typeof window !== "undefined"
-                        ? window.location.origin
-                        : "";
-                    const link = `${origin}/canvas/${createdRoomId}`;
-                    setShareLink(link);
-                    window.location.href = `/canvas/${createdRoomId}`;
-                  } catch (e) {
-                    console.error("Failed to start session", e);
-                  }
-                }}
-              >
-                Start session
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setShareOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CanvasShareModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        userName={session?.user?.name ?? "Anonymous"}
+        shareLink={shareLink}
+        onCopy={() => shareLink && navigator.clipboard.writeText(shareLink)}
+        onStartSession={async () => {
+          try {
+            const origin =
+              typeof window !== "undefined" ? window.location.origin : "";
+            // In the home page, draftRoomId is always a real room ID, not 'local'
+            if (draftRoomId) {
+              const link = `${origin}/canvas/${draftRoomId}`;
+              console.log("link", link);
+              setShareLink(link);
+            }
+          } catch (e) {
+            console.error("Failed to start session", e);
+          }
+        }}
+      />
     </div>
   );
 }
