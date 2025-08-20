@@ -9,7 +9,7 @@ import { RoomCanvas } from "./components/RoomCanvas";
 import { useShareModal } from "./hooks/use-share-modal";
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [draftRoomId, setDraftRoomId] = useState<string | null>(null);
 
@@ -20,25 +20,36 @@ export default function Home() {
 
   useEffect(() => {
     const ensureSoloRoom = async () => {
-      if (!session?.user?.id) return;
-      try {
-        const res = await api.get(`${HTTP_BACKEND}/room/solo`);
-        const roomId: string | undefined = res.data?.room?.id;
-        if (roomId) setDraftRoomId(roomId);
-      } catch (e) {
-        console.error("Failed to ensure solo room", e);
+      if (session?.user?.id) {
+        try {
+          const res = await api.get(`${HTTP_BACKEND}/room/solo`);
+          const roomId: string | undefined = res.data?.room?.id;
+          if (roomId) setDraftRoomId(roomId);
+        } catch (e) {
+          console.error("Failed to ensure solo room", e);
+        }
       }
     };
-    ensureSoloRoom();
-  }, [session?.user?.id]);
+    if (status === 'authenticated') {
+      ensureSoloRoom();
+    }
+  }, [session?.user?.id, status]);
 
   // Solo mode: skip WS
   useEffect(() => {
     setSocket(null);
   }, [draftRoomId]);
 
+  if (status === "loading") {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
   // Guest solo: allow drawing locally using a synthetic roomId "local"
-  if (!session) {
+  if (status === "unauthenticated") {
     return <RoomCanvas roomId={"local"} />;
   }
 
