@@ -44,12 +44,15 @@ function checkUser(token: string): { userId: string; isGuest: boolean; roomScope
       iat?: number;
       exp?: number;
     };
+    console.log("Decoded from websocket: ", decoded)
     if (!decoded || decoded.type !== "access" || decoded.id == null) {
       return null;
     }
     const idStr = String(decoded.id);
     const isGuest = idStr.startsWith("guest:");
     const roomScope = decoded.roomId ?? null;
+    console.log("From ws backend the idStr is: ", idStr)
+    console.log("From ws backend the roomScope is: ", roomScope)
     return { userId: idStr, isGuest, roomScope };
   } catch (e) {
     console.error("Failed to verify JWT in ws-backend:", e);

@@ -7,11 +7,15 @@ import { api } from "./lib/api";
 import { HTTP_BACKEND } from "../../config";
 import { RoomCanvas } from "./components/RoomCanvas";
 import { useShareModal } from "./hooks/use-share-modal";
+import { useOrigin } from "./hooks/use-client";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const { data: session, status } = useSession();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [draftRoomId, setDraftRoomId] = useState<string | null>(null);
+  const origin = useOrigin();
+  const router = useRouter();
 
   const { shareOpen, setShareOpen, shareModalProps, setShareLink } =
     useShareModal({
@@ -30,7 +34,7 @@ export default function Home() {
         }
       }
     };
-    if (status === 'authenticated') {
+    if (status === "authenticated") {
       ensureSoloRoom();
     }
   }, [session?.user?.id, status]);
@@ -68,11 +72,9 @@ export default function Home() {
         {...shareModalProps}
         onStartSession={async () => {
           // In the home page, draftRoomId is always a real room ID, not 'local'
-          if (draftRoomId) {
-            const origin =
-              typeof window !== "undefined" ? window.location.origin : "";
+          if (draftRoomId && origin) {
             const link = `${origin}/canvas/${draftRoomId}`;
-            window.location.href = `/canvas/${draftRoomId}`;
+            router.push(`/canvas/${draftRoomId}`);
           }
         }}
       />

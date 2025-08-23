@@ -1,3 +1,4 @@
+"use client";
 import Input from "@repo/ui/components/Input2";
 import Link from "next/link";
 import { signIn } from "next-auth/react";

@@ -15,16 +15,19 @@ import {
 import { HTTP_BACKEND } from "../../../config";
 import { api } from "../lib/api";
 import { useShareModal } from "../hooks/use-share-modal";
+import { useOrigin } from "../hooks/use-client";
 
 export function RoomCanvas({ roomId }: { roomId: string }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const origin = useOrigin();
   const { shareOpen, setShareOpen, shareModalProps, setShareLink } =
     useShareModal({
       roomId: roomId,
     });
+
   useEffect(() => {
     // Local solo mode: no WS
     if (roomId === "local") {
@@ -105,9 +108,7 @@ export function RoomCanvas({ roomId }: { roomId: string }) {
         {...shareModalProps}
         onStartSession={async () => {
           try {
-            if (roomId === "local") {
-              const origin =
-                typeof window !== "undefined" ? window.location.origin : "";
+            if (roomId === "local" && origin) {
               const endpoint = session?.user?.id
                 ? `${HTTP_BACKEND}/room`
                 : `${HTTP_BACKEND}/room/guest`;

@@ -1,18 +1,20 @@
 "use client";
 
+import { useRef, useEffect } from "react";
+
 interface typeProps {
   type: string;
   placeholder: string;
   className?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   value?: string;
-  name?: string; // Add name prop here
-  id?: string; // Add id prop here
-  required?: boolean; // Add required prop here
-  autoComplete?: string; // Add autoComplete prop here
-  autoFocus?: boolean; // Add autoFocus prop here
-  disabled?: boolean; // Add disabled prop here
-} // Closing the interface here
+  name?: string;
+  id?: string;
+  required?: boolean;
+  autoComplete?: string;
+  autoFocus?: boolean;
+  disabled?: boolean;
+}
 
 export default function Input({
   type,
@@ -27,19 +29,28 @@ export default function Input({
   autoFocus,
   disabled,
 }: typeProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Handle autoFocus in useEffect to avoid hydration mismatch
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [autoFocus]);
+
   return (
     <input
+      ref={inputRef}
       type={type}
       placeholder={placeholder}
       className={className}
       onChange={onChange}
-      value={value}
+      value={value || ""}
       name={name}
       id={id}
-      required={required}
+      required={required || false}
       autoComplete={autoComplete}
-      autoFocus={autoFocus}
-      disabled={disabled}
+      disabled={disabled || false}
     />
   );
 }

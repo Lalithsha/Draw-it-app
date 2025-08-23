@@ -36,7 +36,7 @@ export class Game {
     
     private selectionController: SelectionController;
     
-    constructor(canvas: HTMLCanvasElement, roomId:string, socket: WebSocket | null){
+    constructor(canvas: HTMLCanvasElement, roomId:string, socket: WebSocket | null, width?: number, height?: number){
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
         this.existingShape = [];
@@ -47,9 +47,12 @@ export class Game {
         this.init();
         this.initHandlers();
         this.initMouseHandlers();
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-
+        
+        // Set canvas dimensions - use provided dimensions
+        if (width && height) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+        }
     }
     
     async init(){
@@ -75,10 +78,21 @@ export class Game {
             const message = JSON.parse(event.data);
             if (message.type === 'STREAM_SHAPE' || message.type === 'chat') {
                 const parsedData = JSON.parse(message.message);
-                this.existingShape.push(parsedData.shape);
-                this.clearCanvas();
+                const receivedShape = parsedData.shape as Shape;
+
+                const existingShapeIndex = this.existingShape.findIndex(s => s.id === receivedShape.id);
+
+                if (existingShapeIndex !== -1) {
+                    this.existingShape[existingShapeIndex] = receivedShape;
+                    if (this.selectionController.getSelectedShape()?.id === receivedShape.id) {
+                        this.selectionController.selectShape(receivedShape);
+                    }
+                } else {
+                    this.existingShape.push(receivedShape);
+                }
                 
-                // Send acknowledgment if messageId exists
+                this.render();
+                
                 if (message.messageId) {
                     this.socket?.send(JSON.stringify({
                         type: "ack",
@@ -152,34 +166,26 @@ export class Game {
     mouseDownHandler = (e: MouseEvent) => {
     this.clicked = true;
     const { x: worldX, y: worldY } = this.screenToWorld(e.clientX, e.clientY);
-    console.log("mouse down selected tool is ", this.selectedTool)
+
     if (this.selectedTool === Tool.Selection) {
-        let shapeClicked = false;
-        for (let i = this.existingShape.length - 1; i >= 0; i--) {
-            const shape = this.existingShape[i];
-            if (this.selectionController.isPointInShape(worldX, worldY, shape)) {
-                this.selectionController.setSelectedShape(shape);
-                shapeClicked = true;
-                const bounds = this.selectionController.getShapeBounds(shape);
-                const handle = this.selectionController.getResizeHandleAtPoint(worldX, worldY, bounds);
-                if (handle) {
-                    this.selectionController.startResizing(worldX, worldY);
-                } else {
-                    this.selectionController.startDragging(worldX, worldY);
-                }
-                break;
+        const shapeUnderMouse = this.selectionController.findShapeAtPoint(worldX, worldY, this.existingShape);
+        
+        if (shapeUnderMouse) {
+            if (this.selectionController.getSelectedShape() !== shapeUnderMouse) {
+                this.selectionController.selectShape(shapeUnderMouse);
             }
-        }
-        if (!shapeClicked) {
-            this.selectionController.setSelectedShape(null);
+            this.selectionController.handleMouseDown(worldX, worldY);
+        } else {
+            this.selectionController.selectShape(null);
         }
         this.render();
+
     } else if (this.selectedTool === null) { // Panning mode
         this.canvas.style.cursor = 'grab';
         this.previousX = e.clientX;
         this.previousY = e.clientY;
     } else { // Drawing mode
-        console.log("Mouse down for tools")
+        this.selectionController.selectShape(null); // Deselect when drawing
         this.startX = worldX;
         this.startY = worldY;
         this.previousX = e.clientX;
@@ -193,100 +199,94 @@ export class Game {
     
 
     mouseUpHandler = (e: MouseEvent) => {
-            
-    if (!this.clicked) return;
-    console.log("Mouse up event happened")
-    this.clicked = false;
-    this.canvas.style.cursor = 'default';
-    const { x: worldX, y: worldY } = this.screenToWorld(e.clientX, e.clientY);
-    console.log("selected tool from mouse up handler ", this.selectedTool)
-    if (this.selectedTool === Tool.Selection) {
-        this.selectionController.stopDragging();
-        this.selectionController.stopResizing();
-        this.render();
-    } else if (this.selectedTool === null) {
-        // Panning mode ends; no action needed
-    } else { // Drawing mode
-        const width = worldX - this.startX;
-        const height = worldY - this.startY;
-        let shape: Shape | null = null;
+        if (!this.clicked) return;
+        this.clicked = false;
 
-        if (this.selectedTool === Tool.Line) {
-            shape = {
-                id: uuidv4(),
-                type: Tool.Line,
-                startX: this.startX,
-                startY: this.startY,
-                endX: worldX,
-                endY: worldY
-            };
-        } else if (this.selectedTool === Tool.Rectangle) {
-            shape = {
-                id: uuidv4(),
-                type: Tool.Rectangle,
-                x: this.startX,
-                y: this.startY,
-                width,
-                height
-            };
-        } else if (this.selectedTool === Tool.Circle) {
-            const radius = Math.max(Math.abs(width), Math.abs(height)) / 2;
-            shape = {
-                id: uuidv4(),
-                type: Tool.Circle,
-                centerX: this.startX + width / 2,
-                centerY: this.startY + height / 2,
-                radius: radius
-            };
-        } else if (this.selectedTool === Tool.Pencil) {
-            // finalize current pencil: push final payload
-            const current = this.existingShape[this.existingShape.length - 1];
-            if (current && current.type === Tool.Pencil) {
-                const payload = JSON.stringify({ shape: current });
-                if (this.socket) {
-                    this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
-                } else {
-                    postShape(this.roomId, payload);
+        if (this.selectedTool === Tool.Selection) {
+            this.selectionController.handleMouseUp();
+        } else {
+            this.canvas.style.cursor = 'default';
+            if (this.selectedTool !== null) { // If we were drawing
+                const { x: worldX, y: worldY } = this.screenToWorld(e.clientX, e.clientY);
+                const width = worldX - this.startX;
+                const height = worldY - this.startY;
+                let shape: Shape | null = null;
+
+                if (this.selectedTool === Tool.Line) {
+                    shape = {
+                        id: uuidv4(),
+                        type: Tool.Line,
+                        startX: this.startX,
+                        startY: this.startY,
+                        endX: worldX,
+                        endY: worldY
+                    };
+                } else if (this.selectedTool === Tool.Rectangle) {
+                    shape = {
+                        id: uuidv4(),
+                        type: Tool.Rectangle,
+                        x: this.startX,
+                        y: this.startY,
+                        width,
+                        height
+                    };
+                } else if (this.selectedTool === Tool.Circle) {
+                    const radius = Math.max(Math.abs(width), Math.abs(height)) / 2;
+                    shape = {
+                        id: uuidv4(),
+                        type: Tool.Circle,
+                        centerX: this.startX + width / 2,
+                        centerY: this.startY + height / 2,
+                        radius: radius
+                    };
+                } else if (this.selectedTool === Tool.Pencil) {
+                    const current = this.existingShape[this.existingShape.length - 1];
+                    if (current && current.type === Tool.Pencil) {
+                        const payload = JSON.stringify({ shape: current });
+                        if (this.socket) {
+                            this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
+                        } else {
+                            postShape(this.roomId, payload);
+                        }
+                    }
+                }
+
+                if (shape) {
+                    this.existingShape.push(shape);
+                    const payload = JSON.stringify({ shape });
+                    if (this.socket) {
+                        this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
+                    } else {
+                        postShape(this.roomId, payload);
+                    }
                 }
             }
         }
-
-        if (shape) {
-            this.existingShape.push(shape);
-            const payload = JSON.stringify({ shape });
-            if (this.socket) {
-                this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
-            } else {
-                postShape(this.roomId, payload);
-            }
-        }
         this.render();
-    }
-};     
+    };     
          
 
     mouseMoveHandler = (e: MouseEvent) => {
-    console.log("Mouse move event happening")    
-    if (!this.clicked) return;
     const { x: worldX, y: worldY } = this.screenToWorld(e.clientX, e.clientY);
 
     if (this.selectedTool === Tool.Selection) {
-        if (this.selectionController.isDraggingShape()) {
-            this.selectionController.updateDragging(worldX, worldY);
-            this.render();
-        } else if (this.selectionController.isResizingShape()) {
-            this.selectionController.updateResizing(worldX, worldY);
+        this.selectionController.handleMouseMove(worldX, worldY);
+    } else if (this.selectedTool === null) { // Panning mode
+        if (this.clicked) {
+            this.updatePanning(e);
+            this.canvas.style.cursor = 'grabbing';
             this.render();
         }
-    } else if (this.selectedTool === null) { // Panning mode
-        this.updatePanning(e);
-        this.canvas.style.cursor = 'grabbing';
-        this.render();
     } else { // Drawing mode
+        if (!this.clicked) return;
+        
+        this.render(); // Redraw all shapes first
+
         const width = worldX - this.startX;
         const height = worldY - this.startY;
-        this.clearCanvas();
-        this.ctx.strokeStyle = "rgba(255, 255, 255)";
+        
+        // Draw the temporary shape being created on top
+        this.ctx.strokeStyle = this.strokeColor;
 
         if (this.selectedTool === Tool.Rectangle) {
             this.ctx.strokeRect(this.startX, this.startY, width, height);
@@ -295,7 +295,6 @@ export class Game {
             this.ctx.moveTo(this.startX, this.startY);
             this.ctx.lineTo(worldX, worldY);
             this.ctx.stroke();
-            this.ctx.closePath();
         } else if (this.selectedTool === Tool.Circle) {
             const centerX = this.startX + width / 2;
             const centerY = this.startY + height / 2;
@@ -303,28 +302,12 @@ export class Game {
             this.ctx.beginPath();
             this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
             this.ctx.stroke();
-            this.ctx.closePath();
         } else if (this.selectedTool === Tool.Pencil) {
-            // Throttled point append for current stroke
-            let current = this.existingShape[this.existingShape.length - 1] as Shape | undefined;
-            if (!current || current.type !== Tool.Pencil) {
-                const pencil = { id: uuidv4(), type: Tool.Pencil, points: [{ x: this.startX, y: this.startY }] } as unknown as Shape;
-                this.existingShape.push(pencil);
-                current = pencil;
-            }
-            (current as unknown as { points: {x:number;y:number}[] }).points.push({ x: worldX, y: worldY });
-            // Send incremental updates in batches: only every N points
-            const pts = (current as unknown as { points: { x: number; y: number }[] }).points;
-            if (pts.length % 5 === 0) {
-                const payload = JSON.stringify({ shape: current });
-                if (this.socket) {
-                    this.socket.send(JSON.stringify({ type: "STREAM_SHAPE", message: payload, roomId: this.roomId }));
-                } else {
-                    postShape(this.roomId, payload);
-                }
+            let current = this.existingShape[this.existingShape.length - 1] as any;
+            if (current && current.type === Tool.Pencil) {
+                current.points.push({ x: worldX, y: worldY });
             }
         }
-        this.render();
     }
 };
     
@@ -405,13 +388,7 @@ export class Game {
         }
     });
 
-    if (this.selectionController.isShapeSelected()) {
-        const selectedShape = this.selectionController.getSelectedShape();
-        if (selectedShape) {
-            const bounds = this.selectionController.getShapeBounds(selectedShape);
-            this.selectionController.drawSelectionBox(bounds);
-        }
-    }
+    this.selectionController.drawSelectionUI();
 };
 
 

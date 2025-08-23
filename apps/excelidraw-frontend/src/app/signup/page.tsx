@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { AuthPage } from "../components/AuthPage";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -9,6 +10,7 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +23,7 @@ export default function Signup() {
         { withCredentials: true }
       );
       if (!response?.data) throw new Error("No response");
-      window.location.href = "/signin";
+      router.push("/signin");
     } catch (e: any) {
       const message =
         e?.response?.data?.message || "Sign-up failed. Please try again.";

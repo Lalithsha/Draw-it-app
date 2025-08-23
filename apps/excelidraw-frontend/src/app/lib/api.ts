@@ -1,5 +1,6 @@
 import axios from "axios";
 import { toast } from "../hooks/use-toast";
+import { clientRedirect } from "../hooks/use-client";
 
 export const api = axios.create({
   withCredentials: true,
@@ -39,7 +40,7 @@ api.interceptors.response.use(
       });
       // a small delay to allow the user to see the toast
       setTimeout(() => {
-        window.location.href = "/signin";
+        clientRedirect("/signin");
       }, 2000);
     }
     return Promise.reject(error);

@@ -2,21 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useOrigin } from "./use-client";
 
 export function useShareModal({ roomId }: { roomId: string | null }) {
   const { data: session } = useSession();
   const [shareOpen, setShareOpen] = useState(false);
   const [shareLink, setShareLink] = useState("");
+  const origin = useOrigin();
 
   useEffect(() => {
-    if (shareOpen && roomId && roomId !== "local") {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
+    if (shareOpen && roomId && roomId !== "local" && origin) {
       setShareLink(`${origin}/canvas/${roomId}`);
     } else if (!shareOpen) {
       setShareLink(""); // Clear link when modal is closed
     }
-  }, [shareOpen, roomId]);
+  }, [shareOpen, roomId, origin]);
 
   return {
     shareOpen,

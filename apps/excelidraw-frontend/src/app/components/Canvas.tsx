@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Game } from "../../../draw/Game";
 import { Tool } from "../../../types/canvas";
+import { useIsClient, useWindowDimensions } from "../hooks/use-client";
 
 export function Canvas({
   roomId,
@@ -23,8 +24,8 @@ export function Canvas({
   const [game, setGame] = useState<Game | null>(null);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const { theme } = useTheme();
-  const [canvasWidth, setCanvasWidth] = useState(0);
-  const [canvasHeight, setCanvasHeight] = useState(0);
+  const isClient = useIsClient();
+  const { width: canvasWidth, height: canvasHeight } = useWindowDimensions();
 
   useEffect(() => {
     if (game) {
@@ -34,49 +35,43 @@ export function Canvas({
   }, [selectedTool, game]);
 
   useEffect(() => {
-    if (canvasRef.current) {
-      const g = new Game(canvasRef.current, roomId, socket ?? null);
+    if (canvasRef.current && isClient && canvasWidth > 0 && canvasHeight > 0) {
+      const g = new Game(
+        canvasRef.current,
+        roomId,
+        socket ?? null,
+        canvasWidth,
+        canvasHeight
+      );
       setGame(g);
 
       return () => {
         g.destroy();
       };
     }
-  }, [roomId, socket]);
+  }, [roomId, socket, canvasWidth, canvasHeight, isClient]);
 
   // Apply theme colors to the canvas renderer
   useEffect(() => {
-    if (!game) return;
+    if (!game || !isClient) return;
     const isDark = theme === "dark";
     const isLight = theme === "light";
     // Default to system dark if unspecified; the Providers set class on html
     const useDark =
       isDark ||
-      (!isLight &&
-        typeof window !== "undefined" &&
-        document.documentElement.classList.contains("dark"));
+      (!isLight && document.documentElement.classList.contains("dark"));
     game.setRenderColors({
       backgroundColor: useDark ? "rgba(0,0,0)" : "rgba(255,255,255)",
       strokeColor: useDark ? "rgba(255,255,255)" : "rgba(0,0,0)",
     });
-  }, [game, theme]);
+  }, [game, theme, isClient]);
 
-  // Ensure canvas resizes with window
+  // Trigger game render when dimensions change
   useEffect(() => {
-    const onResize = () => {
-      if (!canvasRef.current) return;
-      setCanvasWidth(window.innerWidth);
-      setCanvasHeight(window.innerHeight);
-      game?.render();
-    };
-    // Set initial size
-    if (typeof window !== "undefined") {
-      setCanvasWidth(window.innerWidth);
-      setCanvasHeight(window.innerHeight);
+    if (game && isClient) {
+      game.render();
     }
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [game]);
+  }, [canvasWidth, canvasHeight, game, isClient]);
 
   return (
     <div className="relative w-full h-full">
