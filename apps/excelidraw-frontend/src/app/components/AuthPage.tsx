@@ -3,6 +3,7 @@ import Input from "@repo/ui/components/Input2";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { ThemeToggleButton } from "@repo/ui/components/theme-toggle";
+import { useEffect, useState } from "react";
 
 interface BaseAuthProps {
   email: string;
@@ -30,6 +31,12 @@ export type AuthProps = (SignInProps | SignUpProps) & {
 };
 
 export function AuthPage(props: AuthProps) {
+  // Render form only after mount to avoid SSR hydration issues caused by
+  // browser extensions injecting attributes into inputs before hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
   const {
     isSignIn,
     name,
